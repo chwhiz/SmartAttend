@@ -1,5 +1,8 @@
+// PACKAGES kasi nga naka folder yung mga code sa ui.
+
 package ui;
 
+// IMPORTS syempre, dami kasi ng kailangan natin dito sa UI haha
 import logic.DatabaseManager;
 import model.AdminUser;
 
@@ -8,7 +11,6 @@ import javax.swing.border.*;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
 
 public class AdminManagerFrame extends JFrame {
 
@@ -20,38 +22,46 @@ public class AdminManagerFrame extends JFrame {
     private static final Color TEXT_DIM  = new Color(130, 130, 130);
     private static final Color BORDER    = new Color(220, 215, 210);
     private static final Color DANGER    = new Color(192, 57, 43);
-    private static final Color SUCCESS   = new Color(39, 174, 96);
 
     private DefaultTableModel tableModel;
     private JTable table;
     private JTextField searchField;
 
     public AdminManagerFrame() {
+        // setup ng mismong frame properties natin 
         setTitle("Admin Manager");
         setSize(780, 520);
-        setLocationRelativeTo(null);
+        setUndecorated(true);
+        setLocationRelativeTo(null); // gitna natin para aesthetic
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         getContentPane().setBackground(BG);
         setLayout(new BorderLayout(0, 0));
 
+        // isa isahin tawagin yung UI build methods kasi hinati hati ko sila
+        // kung isang method lang to sobrang haba niya promise sumakit ulo ko rito 
         buildTitleBar();
-        buildContent();   // ← toolbar + table in one CENTER panel
+        buildContent();
         buildFooter();
+        
+        // load na natin agad data mula db
         loadFromDb();
     }
 
-    // =========================================================
-    //  TITLE BAR
-    // =========================================================
+    /**
+     * Builds the custom title bar at the top of the frame.
+     * Includes the module title and a close button.
+     */
     private void buildTitleBar() {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setBackground(MAROON);
         bar.setBorder(new EmptyBorder(12, 18, 12, 18));
 
+        // main title sa taas, yung malaki 
         JLabel title = new JLabel("Admin Manager");
         title.setFont(new Font("Segoe UI", Font.BOLD, 15));
         title.setForeground(Color.WHITE);
 
+        // subtitle na maliit sa ilalim para medyo may context
         JLabel sub = new JLabel("Manage administrator accounts");
         sub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         sub.setForeground(new Color(240, 200, 200));
@@ -61,26 +71,14 @@ public class AdminManagerFrame extends JFrame {
         textStack.add(title);
         textStack.add(sub);
 
-        JButton btnClose = new JButton("✕");
-        btnClose.setFont(new Font("Segoe UI Emoji", Font.BOLD, 13));
-        btnClose.setForeground(Color.WHITE);
-        btnClose.setBackground(MAROON);
-        btnClose.setBorderPainted(false);
-        btnClose.setFocusPainted(false);
-        btnClose.setOpaque(true);
-        btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnClose.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btnClose.setBackground(DANGER); }
-            public void mouseExited(MouseEvent e)  { btnClose.setBackground(MAROON); }
-        });
-        btnClose.addActionListener(e -> dispose());
+        // close button mula sa utility class natin (sana gumana hahaha)
+        JButton btnClose = UIBuilder.createCloseButton(this);
 
         bar.add(textStack, BorderLayout.WEST);
         bar.add(btnClose,  BorderLayout.EAST);
 
-        JPanel goldBar = new JPanel();
-        goldBar.setBackground(GOLD);
-        goldBar.setPreferredSize(new Dimension(0, 3));
+        // accent bar para di ganun ka plain yung line
+        JPanel goldBar = UIBuilder.createGoldBar();
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(bar,     BorderLayout.CENTER);
@@ -88,25 +86,30 @@ public class AdminManagerFrame extends JFrame {
         add(wrapper, BorderLayout.NORTH);
     }
 
-    // =========================================================
-    //  CONTENT (toolbar + table together to avoid NORTH conflict)
-    // =========================================================
+    /**
+     * Constructs the main content area which includes the toolbar
+     * (search & buttons) and the admin table.
+     */
     private void buildContent() {
         JPanel content = new JPanel(new BorderLayout());
         content.setBackground(BG);
 
-        // ── Toolbar ───────────────────────────────────────────
+        // ito yung toolbar sa taas ng table natin, lagyan natin ng spacing
         JPanel toolbar = new JPanel(new BorderLayout(12, 0));
         toolbar.setBackground(BG);
         toolbar.setBorder(new EmptyBorder(14, 18, 10, 18));
 
+        // search field syempre para mahanap agad yung admin pag madami na sila
+        // though tbh for a system this size, baka isa o dalawa lang admin haha
         searchField = new JTextField();
         searchField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        searchField.setPreferredSize(new Dimension(240, 34));
+        searchField.setPreferredSize(new Dimension(160, 32));
         searchField.setBorder(new CompoundBorder(
             new LineBorder(BORDER, 1, true),
             new EmptyBorder(4, 10, 4, 10)
         ));
+        
+        // auto-filter habang nagta-type ka sismars
         searchField.getDocument().addDocumentListener(
             new javax.swing.event.DocumentListener() {
                 public void insertUpdate(javax.swing.event.DocumentEvent e)  { filterTable(); }
@@ -124,26 +127,28 @@ public class AdminManagerFrame extends JFrame {
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btnRow.setBackground(BG);
 
-        JButton btnAdd    = toolbarButton("Add",    MAROON,                  Color.WHITE);
-        JButton btnEdit   = toolbarButton("Edit",   new Color(52, 73, 94),   Color.WHITE);
-        JButton btnDelete = toolbarButton("Delete", DANGER,                  Color.WHITE);
-        JButton btnRetoken = toolbarButton("Retoken", new Color(180, 100, 0), Color.WHITE);
-        
-        btnRetoken.addActionListener(e -> retokenSelected());
+        JButton btnAdd    = UIBuilder.createToolbarButton("Add Admin",    MAROON,                  Color.WHITE);
+        JButton btnEdit   = UIBuilder.createToolbarButton("Edit",         new Color(52, 73, 94),   Color.WHITE);
+        JButton btnReCard = UIBuilder.createToolbarButton("Update RFID",  new Color(41, 128, 185), Color.WHITE);
+        JButton btnRetoken= UIBuilder.createToolbarButton("Reset TOTP",   new Color(230, 126, 34), Color.WHITE);
+        JButton btnDelete = UIBuilder.createToolbarButton("Delete",       DANGER,                  Color.WHITE);
+
         btnAdd.addActionListener(e    -> showAddDialog());
         btnEdit.addActionListener(e   -> showEditDialog());
+        btnReCard.addActionListener(e -> updateRfidSelected());
+        btnRetoken.addActionListener(e-> resetTotpSelected());
         btnDelete.addActionListener(e -> deleteSelected());
 
         btnRow.add(btnAdd);
         btnRow.add(btnEdit);
-        btnRow.add(btnDelete);
+        btnRow.add(btnReCard);
         btnRow.add(btnRetoken);
+        btnRow.add(btnDelete);
 
         toolbar.add(searchRow, BorderLayout.WEST);
         toolbar.add(btnRow,    BorderLayout.EAST);
 
-        // ── Table ─────────────────────────────────────────────
-        String[] cols = {"Admin ID", "Full Name", "Secret Key (TOTP)"};
+        String[] cols = {"RFID UID / Admin ID", "School ID", "Full Name"};
         tableModel = new DefaultTableModel(cols, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -156,24 +161,6 @@ public class AdminManagerFrame extends JFrame {
         table.setSelectionBackground(new Color(138, 26, 19, 30));
         table.setSelectionForeground(TEXT_MAIN);
         table.setFocusable(false);
-
-        // Mask secret key column
-        table.getColumnModel().getColumn(2).setCellRenderer(
-            new DefaultTableCellRenderer() {
-                @Override
-                public Component getTableCellRendererComponent(JTable t, Object val,
-                        boolean sel, boolean foc, int row, int col) {
-                    super.getTableCellRendererComponent(t, "••••••••••••••••",
-                        sel, foc, row, col);
-                    setBorder(new EmptyBorder(0, 12, 0, 12));
-                    setForeground(TEXT_DIM);
-                    setBackground(sel
-                        ? new Color(138, 26, 19, 40)
-                        : row % 2 == 0 ? CARD_BG : new Color(250, 248, 246));
-                    return this;
-                }
-            }
-        );
 
         JTableHeader header = table.getTableHeader();
         header.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -209,74 +196,10 @@ public class AdminManagerFrame extends JFrame {
         content.add(scroll,  BorderLayout.CENTER);
         add(content, BorderLayout.CENTER);
     }
-    
-    
-    // RETOKEN
-    
-    private void retokenSelected() {
-    int row = table.getSelectedRow();
-    if (row < 0) {
-        JOptionPane.showMessageDialog(this, "Select an admin first.",
-            "Info", JOptionPane.INFORMATION_MESSAGE);
-        return;
-    }
 
-    String id   = (String) tableModel.getValueAt(row, 0);
-    String name = (String) tableModel.getValueAt(row, 1);
-
-    // ── Confirm dialog with "sure" typed ─────────────────────
-    JPanel confirmPanel = new JPanel(new BorderLayout(0, 10));
-    confirmPanel.setBackground(Color.WHITE);
-
-    JLabel msg = new JLabel(
-        "<html>This will <b>invalidate</b> the current TOTP key for <b>"
-        + name + "</b>.<br>Type <b>sure</b> to confirm.</html>");
-    msg.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-
-    JTextField confirmField = new JTextField();
-    confirmField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-    confirmField.setBorder(new CompoundBorder(
-        new LineBorder(new Color(220, 215, 210), 1, true),
-        new EmptyBorder(6, 10, 6, 10)
-    ));
-
-    confirmPanel.add(msg,          BorderLayout.CENTER);
-    confirmPanel.add(confirmField, BorderLayout.SOUTH);
-    confirmPanel.setPreferredSize(new Dimension(360, 80));
-
-    int result = JOptionPane.showConfirmDialog(this,
-        confirmPanel, "Confirm Retoken",
-        JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-
-    if (result != JOptionPane.OK_OPTION) return;
-
-    if (!confirmField.getText().trim().equalsIgnoreCase("sure")) {
-        JOptionPane.showMessageDialog(this,
-            "Retoken cancelled. You did not type 'sure'.",
-            "Cancelled", JOptionPane.INFORMATION_MESSAGE);
-        return;
-    }
-
-    // ── Show onboarding with new key ─────────────────────────
-    TOTPOnboardingDialog onboard = new TOTPOnboardingDialog(this, name);
-    onboard.setVisible(true);
-
-    boolean ok = DatabaseManager.updateAdmin(
-        id, id, name, onboard.getSecretKey());
-
-    if (ok) {
-        loadFromDb();
-        showToast("TOTP key regenerated for " + name + ".");
-    } else {
-        JOptionPane.showMessageDialog(this,
-            "Retoken failed.", "DB Error", JOptionPane.ERROR_MESSAGE);
-    }
-}
-
-    
-    // =========================================================
-    //  FOOTER
-    // =========================================================
+    /**
+     * Set up the footer area for hints and total counts.
+     */
     private void buildFooter() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setBackground(new Color(250, 248, 246));
@@ -285,10 +208,12 @@ public class AdminManagerFrame extends JFrame {
             new EmptyBorder(8, 18, 8, 18)
         ));
 
-        JLabel hint = new JLabel("Secret keys are protected.");
+        // onting hint din for UX
+        JLabel hint = new JLabel("Admin access is now secured via Master RFID.");
         hint.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         hint.setForeground(TEXT_DIM);
 
+        // bilangin lang kung ilan admin currently
         JLabel countLabel = new JLabel();
         countLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         countLabel.setForeground(TEXT_DIM);
@@ -300,93 +225,221 @@ public class AdminManagerFrame extends JFrame {
         add(footer, BorderLayout.SOUTH);
     }
 
-    // =========================================================
-    //  DATA — all MariaDB, no CSV
-    // =========================================================
+    /**
+     * Refreshes the local admin data from the database then repopulates the table.
+     */
     private void loadFromDb() {
-        DatabaseManager.loadAdmins();   // fresh pull from DB
-        tableModel.setRowCount(0);
-        for (AdminUser admin : DatabaseManager.adminDb) {
-            tableModel.addRow(new Object[]{admin.id, admin.name, admin.secretKey});
+        DatabaseManager.loadAdmins();
+        tableModel.setRowCount(0); // clear the table muna 
+        for (AdminUser admin : DatabaseManager.getAdmins()) {
+            tableModel.addRow(new Object[]{admin.id, admin.schoolId, admin.name});
         }
     }
 
+    /**
+     * Filters the JTable rows based on the search input.
+     */
     private void filterTable() {
         String q = searchField.getText().trim().toLowerCase();
         tableModel.setRowCount(0);
-        for (AdminUser admin : DatabaseManager.adminDb) {
+        // loop sa lahat para i-filter based sa name, ID o school ID. 
+        // mano mano talaga kasi walang filter method yung basic JTable natin dzai 
+        for (AdminUser admin : DatabaseManager.getAdmins()) {
             if (admin.id.toLowerCase().contains(q) ||
+                (admin.schoolId != null && admin.schoolId.toLowerCase().contains(q)) ||
                 admin.name.toLowerCase().contains(q)) {
-                tableModel.addRow(new Object[]{admin.id, admin.name, admin.secretKey});
+                tableModel.addRow(new Object[]{admin.id, admin.schoolId, admin.name});
             }
         }
     }
 
-    // =========================================================
-    //  CRUD — direct to MariaDB
-    // =========================================================
-        private void showAddDialog() {
-            // Step 1 — Info
-            AdminDialog dlg = new AdminDialog(this, "Add Admin", "", "", null);
-            dlg.setVisible(true);
-            if (!dlg.isConfirmed()) return;
+    /**
+     * Displays a dialog sequence to register a new admin: 
+     * 1. Asks for Name/School ID
+     * 2. Prompts to scan Master RFID
+     * 3. Setups TOTP keys
+     */
+    private void showAddDialog() {
+        JTextField nameField = new JTextField();
+        JTextField schoolIdField = new JTextField();
 
-            // Step 2 — TOTP Onboarding (auto-generates key)
-            TOTPOnboardingDialog onboard = new TOTPOnboardingDialog(
-                this, dlg.getName());
-            onboard.setVisible(true);
-            // Even if they close without clicking Done, key is still saved
-            // (they can always retoken later)
+        Object[] message = {
+            "Full Name:", nameField,
+            "School ID (View Only / Internal):", schoolIdField
+        };
 
-            boolean ok = DatabaseManager.insertAdmin(
-                dlg.getId(), dlg.getName(), onboard.getSecretKey());
+        // simple prompt lang kasi tinatamad na ko mag-ayos ng isa pang frame
+        int option = JOptionPane.showConfirmDialog(this, message, "New Admin Setup", JOptionPane.OK_CANCEL_OPTION);
+        if (option == JOptionPane.OK_OPTION) {
+            String name = nameField.getText().trim();
+            String schoolId = schoolIdField.getText().trim();
+            if (name.isEmpty() || schoolId.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Fields cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
-            if (ok) {
-                loadFromDb();
-                showToast("Admin added successfully.");
-            } else {
-                JOptionPane.showMessageDialog(this,
-                    "Failed to add admin. ID may already exist.",
-                    "DB Error", JOptionPane.ERROR_MESSAGE);
+            // pop up yung dialog for RFID scanning
+            RFIDCaptureDialog rfidDlg = new RFIDCaptureDialog(this, name);
+            rfidDlg.setVisible(true);
+
+            // pag na-scan nang tama, proceed sa enrollment
+            if (rfidDlg.isConfirmed()) {
+                String capturedId = rfidDlg.getRfidUid();
+
+                // Open TOTP Enrollment kasi kailangan ng 2FA for security
+                TOTPOnboardingDialog totpDlg = new TOTPOnboardingDialog(this, name);
+                totpDlg.setVisible(true);
+
+                // kapag natapos successfully yung enrollment doon i-insert 
+                if (totpDlg.isFinished()) {
+                    String secretKey = totpDlg.getSecretKey();
+                    boolean ok = DatabaseManager.insertAdmin(capturedId, schoolId, name, secretKey);
+                    if (ok) {
+                        loadFromDb();
+                        showToast("Admin added successfully.");
+                    } else {
+                        // baka duplicate info sismars
+                        JOptionPane.showMessageDialog(this,
+                            "Failed to add admin. They may already exist.",
+                            "DB Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
             }
         }
+    }
 
+    /**
+     * Updates only the RFID info of an existing administrator.
+     */
+    private void updateRfidSelected() {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select an admin first.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
 
+        String oldId    = (String) tableModel.getValueAt(row, 0);
+        String schoolId = (String) tableModel.getValueAt(row, 1);
+        String name     = (String) tableModel.getValueAt(row, 2);
+
+        // warning message kasi masisira yung current setup pag nag update
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Register a new RFID card for " + name + "?\nThe old card will no longer work.",
+            "Update RFID", JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            RFIDCaptureDialog rfidDlg = new RFIDCaptureDialog(this, name);
+            rfidDlg.setVisible(true);
+
+            if (rfidDlg.isConfirmed()) {
+                String newId = rfidDlg.getRfidUid();
+                if (newId.equals(oldId)) {
+                    // niloloko ata tayo eh, same card lang naman 
+                    JOptionPane.showMessageDialog(this, "This card is already assigned to this admin.", "Info", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+
+                // hinalungkat ko pa talaga sa list yung dating key para di mawala 
+                String oldKey = DatabaseManager.getAdmins().stream().filter(a -> a.id.equals(oldId)).map(a -> a.secretKey).findFirst().orElse("none");
+                boolean ok = DatabaseManager.updateAdmin(oldId, newId, schoolId, name, oldKey);
+                if (ok) {
+                    loadFromDb();
+                    showToast("RFID card updated successfully.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Update failed. Card may already be registered.", "DB Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
+    }
+
+    /**
+     * Shows dialog to edit basic admin details (Name and School ID).
+     */
     private void showEditDialog() {
         int row = table.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Select an admin first.",
-                "Info", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Select an admin first.", "Info", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        String id  = (String) tableModel.getValueAt(row, 0);
-        String nm  = (String) tableModel.getValueAt(row, 1);
-        // Get real secret key from cache (table shows masked)
-        String key = DatabaseManager.adminDb.stream()
-            .filter(a -> a.id.equals(id))
-            .map(a -> a.secretKey)
-            .findFirst().orElse("");
 
-        AdminDialog dlg = new AdminDialog(this, "Edit Admin", id, nm, key);
-        dlg.setVisible(true);
-        if (dlg.isConfirmed()) {
-            boolean ok = DatabaseManager.updateAdmin(
-                id, dlg.getId(), dlg.getName(), dlg.getSecretKey());
-            if (ok) {
-                loadFromDb();
-                showToast("Admin updated ✓");
-            } else {
-                JOptionPane.showMessageDialog(this,
-                    "Update failed.", "DB Error", JOptionPane.ERROR_MESSAGE);
+        // kunin yung curret info mula sa selected row sa table natin 
+        String id       = (String) tableModel.getValueAt(row, 0);
+        String oldSchoolId = (String) tableModel.getValueAt(row, 1);
+        String oldName  = (String) tableModel.getValueAt(row, 2);
+
+        JTextField nameField = new JTextField(oldName);
+        JTextField schoolIdField = new JTextField(oldSchoolId);
+
+        Object[] message = {
+            "Full Name:", nameField,
+            "School ID:", schoolIdField
+        };
+
+        int option = JOptionPane.showConfirmDialog(this, message, "Edit Admin Info", JOptionPane.OK_CANCEL_OPTION);
+        if (option == JOptionPane.OK_OPTION) {
+            String newName = nameField.getText().trim();
+            String newSchoolId = schoolIdField.getText().trim();
+
+            if (!newName.isEmpty() && !newSchoolId.isEmpty()) {
+                // kailangan ma-retain yung key kaya ganito procedure hahaha
+                String oldKey = DatabaseManager.getAdmins().stream().filter(a -> a.id.equals(id)).map(a -> a.secretKey).findFirst().orElse("none");
+                
+                // update sa DB, tapos re-render ng table
+                boolean ok = DatabaseManager.updateAdmin(id, id, newSchoolId, newName, oldKey);
+                if (ok) {
+                    loadFromDb();
+                    showToast("Admin info updated.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Update failed.", "DB Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         }
     }
 
+    /**
+     * Resets the 2FA secret key in case an admin loses their phone or deletes the app.
+     */
+    private void resetTotpSelected() {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select an admin first.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        String id       = (String) tableModel.getValueAt(row, 0);
+        String schoolId = (String) tableModel.getValueAt(row, 1);
+        String name     = (String) tableModel.getValueAt(row, 2);
+
+        // check if sure talaga sila kase kawawa admin mawawalan access
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Regenerate TOTP key for " + name + "?\nThis will invalidate their old Authenticator code.",
+            "Reset TOTP", JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            TOTPOnboardingDialog totpDlg = new TOTPOnboardingDialog(this, name);
+            totpDlg.setVisible(true);
+
+            if (totpDlg.isFinished()) {
+                String newKey = totpDlg.getSecretKey();
+                boolean ok = DatabaseManager.updateAdmin(id, id, schoolId, name, newKey);
+                if (ok) {
+                    showToast("TOTP Key has been reset successfully.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Update failed.", "DB Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
+    }
+
+    /**
+     * Removes the selected admin from the system.
+     */
     private void deleteSelected() {
         int row = table.getSelectedRow();
         if (row < 0) return;
 
-        if (DatabaseManager.adminDb.size() <= 1) {
+        // safeguard para di ma-lock out everyone. imagine kung nadelete mo sarili mong account 
+        if (DatabaseManager.getAdminCount() <= 1) {
             JOptionPane.showMessageDialog(this,
                 "Cannot delete the last admin account.",
                 "Blocked", JOptionPane.WARNING_MESSAGE);
@@ -394,8 +447,9 @@ public class AdminManagerFrame extends JFrame {
         }
 
         String id   = (String) tableModel.getValueAt(row, 0);
-        String name = (String) tableModel.getValueAt(row, 1);
+        String name = (String) tableModel.getValueAt(row, 2);
 
+        // naglagay na ako ng bold text para mas obvious sa user
         int confirm = JOptionPane.showConfirmDialog(this,
             "<html>Delete admin <b>" + name + "</b>?<br>" +
             "<small>This cannot be undone.</small></html>",
@@ -414,156 +468,9 @@ public class AdminManagerFrame extends JFrame {
         }
     }
 
-    // =========================================================
-    //  HELPERS
-    // =========================================================
+    // helper method natin for uniform message prompts, para di puro copy paste.
     private void showToast(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Done",
             JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private JButton toolbarButton(String text, Color bg, Color fg) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btn.setBackground(bg);
-        btn.setForeground(fg);
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setBorder(new EmptyBorder(7, 14, 7, 14));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
-    // =========================================================
-    //  INNER DIALOG
-    // =========================================================
-    static class AdminDialog extends JDialog {
-        private final JTextField fId, fName;
-        private final JPasswordField fKey;
-        private boolean confirmed = false;
-
-        AdminDialog(Frame parent, String title,
-                    String id, String name, String key) {
-            super(parent, title, true);
-            setSize(420, 340);
-            setLocationRelativeTo(parent);
-            setResizable(false);
-            setUndecorated(true);
-
-            JPanel root = new JPanel(new BorderLayout());
-            root.setBorder(new LineBorder(new Color(220, 215, 210), 1));
-
-            // Header
-            JPanel header = new JPanel(new BorderLayout());
-            header.setBackground(new Color(138, 26, 19));
-            header.setBorder(new EmptyBorder(12, 16, 12, 16));
-            JLabel lbl = new JLabel(title);
-            lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            lbl.setForeground(Color.WHITE);
-            header.add(lbl);
-
-            JPanel goldBar = new JPanel();
-            goldBar.setBackground(new Color(248, 205, 0));
-            goldBar.setPreferredSize(new Dimension(0, 2));
-
-            JPanel hWrap = new JPanel(new BorderLayout());
-            hWrap.add(header,  BorderLayout.CENTER);
-            hWrap.add(goldBar, BorderLayout.SOUTH);
-
-            // Form
-            JPanel form = new JPanel(new GridLayout(4, 2, 10, 14));
-            form.setBorder(new EmptyBorder(22, 20, 16, 20));
-            form.setBackground(Color.WHITE);
-
-            fId   = field(id);
-            fName = field(name);
-            fKey  = new JPasswordField(key);
-            fKey.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-            fKey.setBorder(new CompoundBorder(
-                new LineBorder(new Color(220, 215, 210), 1, true),
-                new EmptyBorder(5, 8, 5, 8)
-            ));
-
-            // Show/hide toggle for secret key
-            JCheckBox cbShow = new JCheckBox("Show secret key");
-            cbShow.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-            cbShow.setForeground(new Color(130, 130, 130));
-            cbShow.setBackground(Color.WHITE);
-            cbShow.addActionListener(e ->
-                fKey.setEchoChar(cbShow.isSelected() ? (char) 0 : '●'));
-
-            form.add(label("Admin ID:"));         form.add(fId);
-            form.add(label("Full Name:"));         form.add(fName);
-            form.add(label("TOTP Secret Key:"));   form.add(fKey);
-            form.add(new JLabel());                form.add(cbShow);
-
-            // Buttons
-            JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-            btns.setBackground(new Color(245, 243, 240));
-            btns.setBorder(new MatteBorder(1, 0, 0, 0,
-                new Color(220, 215, 210)));
-
-            JButton cancel  = btn("Cancel",  new Color(150, 150, 150));
-            JButton confirm = btn("Confirm", new Color(138, 26, 19));
-
-            cancel.addActionListener(e -> dispose());
-            confirm.addActionListener(e -> {
-                if (fId.getText().trim().isEmpty() ||
-                    fName.getText().trim().isEmpty() ||
-                    new String(fKey.getPassword()).trim().isEmpty()) {
-                    JOptionPane.showMessageDialog(this,
-                        "All fields are required.", "Validation",
-                        JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-                confirmed = true;
-                dispose();
-            });
-
-            btns.add(cancel);
-            btns.add(confirm);
-
-            root.add(hWrap, BorderLayout.NORTH);
-            root.add(form,  BorderLayout.CENTER);
-            root.add(btns,  BorderLayout.SOUTH);
-            setContentPane(root);
-        }
-
-        private JTextField field(String val) {
-            JTextField f = new JTextField(val);
-            f.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-            f.setBorder(new CompoundBorder(
-                new LineBorder(new Color(220, 215, 210), 1, true),
-                new EmptyBorder(5, 8, 5, 8)
-            ));
-            return f;
-        }
-
-        private JLabel label(String text) {
-            JLabel l = new JLabel(text);
-            l.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-            l.setForeground(new Color(130, 130, 130));
-            return l;
-        }
-
-        private JButton btn(String text, Color bg) {
-            JButton b = new JButton(text);
-            b.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            b.setBackground(bg);
-            b.setForeground(Color.WHITE);
-            b.setOpaque(true);
-            b.setBorderPainted(false);
-            b.setFocusPainted(false);
-            b.setBorder(new EmptyBorder(8, 18, 8, 18));
-            b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            return b;
-        }
-
-        public boolean isConfirmed() { return confirmed; }
-        public String getId()        { return fId.getText().trim(); }
-        public String getName()      { return fName.getText().trim(); }
-        public String getSecretKey() { return new String(fKey.getPassword()).trim(); }
     }
 }

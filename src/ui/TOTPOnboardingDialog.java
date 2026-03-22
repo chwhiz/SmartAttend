@@ -16,13 +16,13 @@ import java.util.Base64;
 
 public class TOTPOnboardingDialog extends JDialog {
 
-    private static final Color MAROON   = new Color(138, 26, 19);
-    private static final Color GOLD     = new Color(248, 205, 0);
-    private static final Color BG       = new Color(245, 243, 240);
-    private static final Color CARD_BG  = Color.WHITE;
-    private static final Color TEXT_DIM = new Color(130, 130, 130);
-    private static final Color BORDER   = new Color(220, 215, 210);
-    private static final Color SUCCESS  = new Color(39, 174, 96);
+    private static final Color MAROON   = UIBuilder.MAROON;
+    private static final Color GOLD     = UIBuilder.GOLD;
+    private static final Color BG       = UIBuilder.BG;
+    private static final Color CARD_BG  = UIBuilder.CARD_BG;
+    private static final Color TEXT_DIM = UIBuilder.TEXT_DIM;
+    private static final Color BORDER   = UIBuilder.BORDER;
+    private static final Color SUCCESS  = UIBuilder.SUCCESS;
 
     private final String adminName;
     private final String secretKey;
@@ -66,9 +66,8 @@ public class TOTPOnboardingDialog extends JDialog {
         titleStack.add(sub);
         bar.add(titleStack, BorderLayout.WEST);
 
-        JPanel goldBar = new JPanel();
-        goldBar.setBackground(GOLD);
-        goldBar.setPreferredSize(new Dimension(0, 3));
+        // REFACTORED: Use UIBuilder for standard gold bar
+        JPanel goldBar = UIBuilder.createGoldBar();
 
         JPanel barWrap = new JPanel(new BorderLayout());
         barWrap.add(bar,     BorderLayout.CENTER);

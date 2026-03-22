@@ -32,7 +32,7 @@ public class MainFrame extends JFrame {
 
     private JLabel lblTimestamp, lblStats, lblStatus;
     private JLabel lblName, lblId, lblSubject, lblSched;
-    private JLabel lblSection, lblDate, lblTime;
+    private JLabel lblSection, lblDate, lblTime, lblAbsentMessage;
     private JLabel lblScanCount, lblLastScanned;
 
     private JPanel cardPanel;
@@ -41,19 +41,25 @@ public class MainFrame extends JFrame {
     private CheckmarkPanel checkmarkPanel;
 
     private JPanel novoBar;
+    private JLabel novoToastLabel;
+    private javax.swing.Timer novoToastTimer;
     private boolean novoVisible = false;
     private javax.swing.Timer novoAutoHide;
 
     private int scanCountToday = 0;
     private final Map<String, LocalDateTime> lastScanMap = new HashMap<>();
+    private final Map<String, Boolean> inCampusMap = new HashMap<>();
     private static final int DUPLICATE_MINUTES = 5;
 
     public MainFrame() {
+        // setup standard main frame na nakafull screen kasi kiosk type tayo
+        // setUndecorated true para bawal i-close basta basta
         setTitle("University of Perpetual Help System DALTA - Senior High School");
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setUndecorated(true);
 
+        // literal na dedmahin yung exit event. nice try though
         addWindowListener(new WindowAdapter() {
             @Override public void windowClosing(WindowEvent e) { }
         });
@@ -61,10 +67,13 @@ public class MainFrame extends JFrame {
         getContentPane().setBackground(BG);
         setLayout(new BorderLayout(0, 0));
 
+        // assemble yung main UI parts 
         buildTopBar();
         buildCardArea();
         buildNovoBar();
         buildInputArea();
+        
+        // itong shortcut para lumabas yung hidden admin bar (F12)
         registerNovoShortcut();
         startClock();
     }
@@ -72,11 +81,15 @@ public class MainFrame extends JFrame {
     // =========================================================
     //  TOP BAR
     // =========================================================
+    /**
+     * Constructs the main header displaying university details and logos.
+     */
     private void buildTopBar() {
         JPanel top = new JPanel(new BorderLayout());
         top.setBackground(MAROON);
         top.setBorder(new EmptyBorder(10, 20, 10, 20));
 
+        // layout for the logos on the top left
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
         left.setBackground(MAROON);
         left.add(loadLogo("/uphsd_logo.png", 70, 90));
@@ -88,10 +101,12 @@ public class MainFrame extends JFrame {
         line1.setFont(new Font("Impact", Font.PLAIN, 20));
         line1.setForeground(GOLD);
 
+        // subtitle
         JLabel line2 = new JLabel("Molino Campus  ·  Senior High School Department");
         line2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         line2.setForeground(new Color(255, 240, 200));
 
+        // version number 
         JLabel line3 = new JLabel("Attendance System  v4.0");
         line3.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         line3.setForeground(new Color(220, 180, 180));
@@ -104,6 +119,7 @@ public class MainFrame extends JFrame {
         JPanel right = new JPanel(new BorderLayout(0, 4));
         right.setBackground(MAROON);
 
+        // logo row naman sa top right
         JPanel logoRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         logoRow.setBackground(MAROON);
         logoRow.add(loadLogo("/30th.png", 60, 60));
@@ -120,9 +136,8 @@ public class MainFrame extends JFrame {
         top.add(left,  BorderLayout.WEST);
         top.add(right, BorderLayout.EAST);
 
-        JPanel goldBar = new JPanel();
-        goldBar.setBackground(GOLD);
-        goldBar.setPreferredSize(new Dimension(0, 4));
+        // kumuha na lang sa mismong UIBuilder class imbes na manu-mano para malinis tignan
+        JPanel goldBar = UIBuilder.createGoldBar();
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(top,     BorderLayout.CENTER);
@@ -134,40 +149,57 @@ public class MainFrame extends JFrame {
     // =========================================================
     //  NOVO BAR
     // =========================================================
+    /**
+     * Hidden administrative menu bound to CTRL+SHIFT+B
+     */
     private void buildNovoBar() {
         novoBar = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 10));
         novoBar.setBackground(NOVO_BG);
         novoBar.setBorder(new MatteBorder(2, 0, 0, 0, GOLD));
-        novoBar.setVisible(false);
+        novoBar.setVisible(false); // syempre tago muna natin dzai 
 
         JButton btnViewLog  = novoButton("View Log",    false);
         JButton btnStudents = novoButton("Students",    true);
         JButton btnAdmins   = novoButton("Admins",      true);
         JButton btnSchedule = novoButton("Schedule",    true);
         JButton btnReload   = novoButton("Reload DB",   false);
-        JButton btnExit     = novoButton("Exit System", true);
+        JButton btnDevMode  = novoButton("Dev Mode",    false); // secret shortcut din sa dev options ko 
+        JButton btnExit     = novoButton("Exit System", false);
 
         btnViewLog.addActionListener(e -> {
+            forceHideNovoBar();
             if (authCheck(false)) new AttendanceLogFrame().setVisible(true);
         });
         btnStudents.addActionListener(e -> {
+            forceHideNovoBar();
             if (authCheck(true)) new StudentManagerFrame().setVisible(true);
         });
         btnAdmins.addActionListener(e -> {
+            forceHideNovoBar();
             if (authCheck(true)) new AdminManagerFrame().setVisible(true);
         });
         btnSchedule.addActionListener(e -> {
+            forceHideNovoBar();
             if (authCheck(true)) new ScheduleManagerFrame().setVisible(true);
         });
         btnReload.addActionListener(e -> {
+            forceHideNovoBar();
             if (authCheck(false)) {
                 DatabaseManager.loadDatabases();
                 updateStats();
                 showNovoToast("Databases reloaded");
+                toggleNovoBar(); // reopen shortly to show the toast
+            }
+        });
+        btnDevMode.addActionListener(e -> {
+            forceHideNovoBar();
+            if (authCheck(false, "Developer access required.")) {
+                new DevModeFrame(this).setVisible(true);
             }
         });
         btnExit.addActionListener(e -> {
-            if (authCheck(true)) System.exit(0);
+            forceHideNovoBar();
+            if (authCheck(false)) System.exit(0);
         });
 
         novoBar.add(btnViewLog);
@@ -178,7 +210,17 @@ public class MainFrame extends JFrame {
         novoBar.add(novoDivider());
         novoBar.add(btnReload);
         novoBar.add(novoDivider());
+        novoBar.add(btnDevMode);
+        novoBar.add(novoDivider());
         novoBar.add(btnExit);
+
+        // Toast label to prevent duplicates
+        novoToastLabel = new JLabel("");
+        novoToastLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        novoToastLabel.setForeground(SUCCESS);
+        novoToastLabel.setBorder(new EmptyBorder(0, 16, 0, 0));
+        novoToastLabel.setVisible(false);
+        novoBar.add(novoToastLabel);
     }
 
     private JButton novoButton(String text, boolean critical) {
@@ -212,19 +254,20 @@ public class MainFrame extends JFrame {
         return sep;
     }
 
-    private void showNovoToast(String msg) {
-        JLabel toast = new JLabel(msg);
-        toast.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        toast.setForeground(SUCCESS);
-        toast.setBorder(new EmptyBorder(0, 16, 0, 0));
-        novoBar.add(toast);
+    public void showNovoToast(String msg) {
+        novoToastLabel.setText(msg);
+        novoToastLabel.setVisible(true);
         novoBar.revalidate();
         novoBar.repaint();
-        new javax.swing.Timer(2500, e -> {
-            novoBar.remove(toast);
+        
+        if (novoToastTimer != null) novoToastTimer.stop();
+        novoToastTimer = new javax.swing.Timer(2500, e -> {
+            novoToastLabel.setVisible(false);
             novoBar.revalidate();
             novoBar.repaint();
-        }) {{ setRepeats(false); }}.start();
+        });
+        novoToastTimer.setRepeats(false);
+        novoToastTimer.start();
     }
 
     private void registerNovoShortcut() {
@@ -236,6 +279,16 @@ public class MainFrame extends JFrame {
         getRootPane().getActionMap().put("toggleNovo", new AbstractAction() {
             @Override public void actionPerformed(ActionEvent e) { toggleNovoBar(); }
         });
+    }
+
+    private void forceHideNovoBar() {
+        novoVisible = false;
+        novoBar.setVisible(false);
+        if (novoAutoHide != null) novoAutoHide.stop();
+        if (novoToastTimer != null) novoToastTimer.stop();
+        novoToastLabel.setVisible(false);
+        revalidate();
+        repaint();
     }
 
     private void toggleNovoBar() {
@@ -259,7 +312,11 @@ public class MainFrame extends JFrame {
     }
 
     private boolean authCheck(boolean requireTotp) {
-        AdminAuthDialog auth = new AdminAuthDialog(this, requireTotp);
+        return authCheck(requireTotp, null);
+    }
+
+    private boolean authCheck(boolean requireTotp, String customSubtitle) {
+        AdminAuthDialog auth = new AdminAuthDialog(this, requireTotp, customSubtitle);
         auth.setVisible(true);
         if (!auth.isAuthenticated()) {
             novoVisible = false;
@@ -325,7 +382,7 @@ public class MainFrame extends JFrame {
             .ofPattern("EEEE, MMMM dd yyyy").withLocale(Locale.ENGLISH);
 
         new javax.swing.Timer(1000, e -> {
-            ZonedDateTime now = ZonedDateTime.now(PH_TIME);
+            ZonedDateTime now = logic.DatabaseManager.getNowZoned();
             lblClock.setText(now.format(timeFmt));
             lblDayDate.setText(now.format(dateFmt));
         }) {{ setInitialDelay(0); start(); }};
@@ -453,10 +510,16 @@ public class MainFrame extends JFrame {
         lblDesc2.setBorder(new EmptyBorder(2, 0, 0, 0));
         lblDesc2.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        JLabel lblKioskId = new JLabel("Terminal: " + logic.DatabaseManager.kioskId);
+        lblKioskId.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblKioskId.setForeground(MAROON);
+        lblKioskId.setBorder(new EmptyBorder(12, 0, 0, 0));
+        lblKioskId.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         lblStats = new JLabel("");
         lblStats.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblStats.setForeground(TEXT_DIM);
-        lblStats.setBorder(new EmptyBorder(24, 0, 0, 0));
+        lblStats.setBorder(new EmptyBorder(12, 0, 0, 0));
         lblStats.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         rightPane.add(Box.createVerticalGlue());
@@ -468,6 +531,7 @@ public class MainFrame extends JFrame {
         rightPane.add(lblRfidTitle);
         rightPane.add(lblDesc1);
         rightPane.add(lblDesc2);
+        rightPane.add(lblKioskId);
         rightPane.add(Box.createVerticalGlue());
         rightPane.add(lblStats);
 
@@ -523,6 +587,11 @@ public class MainFrame extends JFrame {
         lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        lblAbsentMessage = new JLabel(" ");
+        lblAbsentMessage.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblAbsentMessage.setForeground(DANGER);
+        lblAbsentMessage.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         lblId      = createResultValueLabel();
         lblSection = createResultValueLabel();
 
@@ -530,7 +599,8 @@ public class MainFrame extends JFrame {
         leftPane.add(lblGreeting);
         leftPane.add(lblName);
         leftPane.add(lblStatus);
-        leftPane.add(Box.createVerticalStrut(16));
+        leftPane.add(lblAbsentMessage);
+        leftPane.add(Box.createVerticalStrut(10));
         leftPane.add(makeSep());
         leftPane.add(Box.createVerticalStrut(12));
         leftPane.add(buildInlineRow("Student ID :", lblId));
@@ -592,6 +662,19 @@ public class MainFrame extends JFrame {
             }
         });
         inputField.addActionListener(e -> handleInput(inputField.getText().trim()));
+        inputField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { check(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { check(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { check(); }
+            private void check() {
+                SwingUtilities.invokeLater(() -> {
+                    String txt = inputField.getText().trim();
+                    if (txt.length() >= 10 && txt.matches("\\d+")) { // Assuming 10-digit RFIDs
+                        handleInput(txt);
+                    }
+                });
+            }
+        });
 
         wrapper.add(prompt,     BorderLayout.NORTH);
         wrapper.add(inputField, BorderLayout.CENTER);
@@ -612,20 +695,80 @@ public class MainFrame extends JFrame {
         if (raw.isEmpty()) return;
 
         if (raw.equalsIgnoreCase("EXIT")) {
-            if (authCheck(true)) System.exit(0);
+            if (authCheck(false)) System.exit(0);
             return;
         }
 
-        // RFID uid — no format validation, pass directly
+        // Check if the scanned input belongs to an Admin
+        model.AdminUser adminUser = logic.DatabaseManager.authenticateAdmin(raw);
+        if (adminUser != null) {
+            if (!novoVisible) {
+                toggleNovoBar();
+            } else {
+                if (novoAutoHide != null) novoAutoHide.restart();
+            }
+            showNovoToast("Welcome, " + adminUser.name + "!");
+            return;
+        }
+
+        // Check if input is a direct Student RFID UID
+        if (logic.DatabaseManager.studentDb.containsKey(raw)) {
+            String sName = logic.DatabaseManager.studentDb.get(raw)[0];
+            attemptLogStudent(raw, sName, false);
+            return;
+        }
+
+        // Otherwise, check if it's a manual Student ID (e.g. 11-001-22)
+        String matchedRfid = null;
+        String studentName = "";
+        for (Map.Entry<String, String[]> entry : logic.DatabaseManager.studentDb.entrySet()) {
+            if (entry.getValue()[2].equalsIgnoreCase(raw)) {
+                matchedRfid = entry.getKey();
+                studentName = entry.getValue()[0];
+                break;
+            }
+        }
+
+        if (matchedRfid != null) {
+            attemptLogStudent(matchedRfid, studentName, true);
+            return;
+        }
+
+        // If not admin, not RFID, and not Student ID, pass to lookupAndLog to show "Unrecognized card" error
         lookupAndLog(raw);
+    }
+
+    private void attemptLogStudent(String rfidUid, String studentName, boolean isManual) {
+        java.time.DayOfWeek day = logic.DatabaseManager.getNowDate().getDayOfWeek();
+        boolean isWeekend = (day == java.time.DayOfWeek.SATURDAY || day == java.time.DayOfWeek.SUNDAY);
+
+        if (isWeekend) {
+            String dayStr = day.toString().substring(0, 1) + day.toString().substring(1).toLowerCase();
+            String subTitle = "Weekend override: " + studentName;
+            if (authCheck(false, subTitle)) {
+                lookupAndLog(rfidUid);
+            } else {
+                ToastNotification.show(this, "No Schedule", 
+                    "It's " + dayStr + ". You don't have any schedules for today.");
+            }
+        } else {
+            if (isManual) {
+                String subTitle = "Auth manual log for: " + studentName;
+                if (authCheck(false, subTitle)) {
+                    lookupAndLog(rfidUid);
+                }
+            } else {
+                lookupAndLog(rfidUid);
+            }
+        }
     }
 
         private void lookupAndLog(String rfidUid) {
         LocalDateTime lastScan = lastScanMap.get(rfidUid);
         if (lastScan != null) {
             long minsAgo = java.time.temporal.ChronoUnit.MINUTES
-                .between(lastScan, LocalDateTime.now(PH_TIME));
-            if (minsAgo < DUPLICATE_MINUTES) {
+                .between(lastScan, logic.DatabaseManager.getNowDateTime());
+            if (!logic.DatabaseManager.devBypassRateLimit && minsAgo < DUPLICATE_MINUTES) {
                 long remaining = DUPLICATE_MINUTES - minsAgo;
                 String[] data = DatabaseManager.studentDb.get(rfidUid);
                 String label  = data != null ? data[2] : rfidUid;
@@ -642,8 +785,40 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        lastScanMap.put(rfidUid, LocalDateTime.now(PH_TIME));
-        AttendanceResult r = AttendanceProcessor.process(rfidUid);
+        boolean isTimeOut = inCampusMap.getOrDefault(rfidUid, false);
+
+        if (isTimeOut) {
+            boolean hasRemainingClass = false;
+            String nextSubject = "";
+            String section = data[1];
+            String todayStr = logic.DatabaseManager.getNowDate().getDayOfWeek().toString();
+            LocalTime now = logic.DatabaseManager.getNowTime();
+
+            for (model.ScheduleItem item : logic.DatabaseManager.scheduleDb) {
+                if (item.section.equalsIgnoreCase(section) && item.day.equals(todayStr)) {
+                    if (now.isBefore(item.endTime)) {
+                        hasRemainingClass = true;
+                        nextSubject = item.subject;
+                        break;
+                    }
+                }
+            }
+
+            if (hasRemainingClass) {
+                ToastNotification.show(this, "Early Departure Blocked", 
+                    "You still have " + nextSubject + ". Admin override required.");
+                
+                String subTitle = "Early dismissal override: " + data[0];
+                if (!authCheck(false, subTitle)) {
+                    return; // Admin declined or user cancelled
+                }
+            }
+        }
+
+        inCampusMap.put(rfidUid, !isTimeOut);
+        lastScanMap.put(rfidUid, logic.DatabaseManager.getNowDateTime());
+        
+        AttendanceResult r = AttendanceProcessor.process(rfidUid, isTimeOut);
 
         scanCountToday++;
         lblScanCount.setText("Total scans today: " + scanCountToday);
@@ -651,7 +826,7 @@ public class MainFrame extends JFrame {
         DateTimeFormatter fmt = DateTimeFormatter
             .ofPattern("hh:mm a").withLocale(Locale.ENGLISH);
         lblLastScanned.setText("Last: " + r.name + "  ·  " +
-            LocalTime.now(PH_TIME).format(fmt));
+            logic.DatabaseManager.getNowTime().format(fmt));
 
         showResult(r);
     }
@@ -664,21 +839,30 @@ public class MainFrame extends JFrame {
         lblSubject.setText(r.subject);
         lblSched.setText(r.timeDetails);
         lblSection.setText(r.section);
-        lblDate.setText(LocalDate.now(PH_TIME)
+        lblDate.setText(logic.DatabaseManager.getNowDate()
             .format(DateTimeFormatter.ofPattern("MMM dd, yyyy")
             .withLocale(Locale.ENGLISH)));
-        lblTime.setText(LocalTime.now(PH_TIME)
+        lblTime.setText(logic.DatabaseManager.getNowTime()
             .format(DateTimeFormatter.ofPattern("hh:mm a")
             .withLocale(Locale.ENGLISH)));
 
         boolean late = r.status.contains("LATE");
-        lblStatus.setForeground(late ? DANGER : SUCCESS);
+        boolean absent = r.status.contains("ABSENT");
+        boolean isOut = r.status.contains("OUT");
+        lblStatus.setForeground((late || absent || isOut) ? DANGER : SUCCESS);
         lblStatus.setText(r.status);
+
+        if (absent) {
+            lblAbsentMessage.setText("(marked on teacher's record)");
+        } else {
+            lblAbsentMessage.setText(" ");
+        }
 
         CardLayout cl = (CardLayout) cardPanel.getLayout();
         cl.show(cardPanel, "checkmark");
 
-        checkmarkPanel.startAnimation(late, () -> {
+        String displayStatus = late ? "LATE" : (isOut ? "TIME OUT" : "LOGGED");
+        checkmarkPanel.startAnimation((late || absent || isOut), displayStatus, () -> {
             cl.show(cardPanel, "result");
             new javax.swing.Timer(5000, e -> cl.show(cardPanel, "status"))
                 {{ setRepeats(false); }}.start();
@@ -693,14 +877,15 @@ public class MainFrame extends JFrame {
         lblSubject.setText("—");
         lblSched.setText("—");
         lblSection.setText("—");
-        lblDate.setText(LocalDate.now(PH_TIME)
+        lblDate.setText(logic.DatabaseManager.getNowDate()
             .format(DateTimeFormatter.ofPattern("MMM dd, yyyy")
             .withLocale(Locale.ENGLISH)));
-        lblTime.setText(LocalTime.now(PH_TIME)
+        lblTime.setText(logic.DatabaseManager.getNowTime()
             .format(DateTimeFormatter.ofPattern("hh:mm a")
             .withLocale(Locale.ENGLISH)));
         lblStatus.setForeground(DANGER);
         lblStatus.setText("Please check with your coordinator if your ID has been registered.");
+        lblAbsentMessage.setText(" ");
 
         CardLayout cl = (CardLayout) cardPanel.getLayout();
         cl.show(cardPanel, "checkmark");
@@ -722,15 +907,30 @@ public class MainFrame extends JFrame {
         DateTimeFormatter dtf = DateTimeFormatter
             .ofPattern("EEE, MMM dd  hh:mm:ss a")
             .withLocale(Locale.ENGLISH);
-        clockTimer = new javax.swing.Timer(1000, e ->
-            lblTimestamp.setText(ZonedDateTime.now(PH_TIME).format(dtf)));
+        clockTimer = new javax.swing.Timer(1000, e -> {
+            lblTimestamp.setText(logic.DatabaseManager.getNowZoned().format(dtf));
+            checkNightlyReset();
+        });
         clockTimer.start();
         updateStats();
     }
 
+    private void checkNightlyReset() {
+        LocalTime now = logic.DatabaseManager.getNowTime();
+        // Reset between 8:00 PM and 8:00:01 PM exactly once
+        if (now.getHour() == 20 && now.getMinute() == 0 && now.getSecond() == 0) {
+            inCampusMap.clear();
+            lastScanMap.clear();
+            scanCountToday = 0;
+            lblScanCount.setText("Total scans today: 0");
+            lblLastScanned.setText("Last: —");
+            System.out.println("Triggered nightly cleanup (8:00 PM). Campus map and scan counts reset.");
+        }
+    }
+
     private void updateStats() {
         lblStats.setText("Students: " + DatabaseManager.studentDb.size()
-            + "     Admins: " + DatabaseManager.adminDb.size()
+            + "     Admins: " + DatabaseManager.getAdminCount()
             + "     Schedule entries: " + DatabaseManager.scheduleDb.size());
     }
 
@@ -738,7 +938,7 @@ public class MainFrame extends JFrame {
     //  HELPERS
     // =========================================================
     private String getGreeting() {
-        int hour = LocalTime.now(PH_TIME).getHour();
+        int hour = logic.DatabaseManager.getNowTime().getHour();
         if (hour < 12) return "Good morning";
         if (hour < 18) return "Good afternoon";
         return "Good evening";
@@ -807,30 +1007,35 @@ public class MainFrame extends JFrame {
 
     // =========================================================
     //  CHECKMARK / X ANIMATION
+    // 
+    //  i asked help to github copilot for this part and it actually did a pretty good job, ngl
     // =========================================================
     class CheckmarkPanel extends JPanel {
         private float   progress = 0f, opacity = 1f;
-        private boolean isLate   = false;
+        private boolean isWarning = false;
         private boolean isError  = false;   // ← X mode flag
+        private String  statusText = "LOGGED";
         private javax.swing.Timer drawTimer, fadeTimer;
 
         CheckmarkPanel() { setBackground(CARD_BG); }
 
-        // Normal scan (green check or red check for late)
-        public void startAnimation(boolean late, Runnable onComplete) {
-            isError  = false;
-            isLate   = late;
-            progress = 0f;
-            opacity  = 1f;
+        // Normal scan (green check or red check for warning)
+        public void startAnimation(boolean warning, String text, Runnable onComplete) {
+            isError    = false;
+            isWarning  = warning;
+            statusText = text;
+            progress   = 0f;
+            opacity    = 1f;
             runAnimation(onComplete);
         }
 
         // Not found (red X + "NOT FOUND" label)
         public void startErrorAnimation(Runnable onComplete) {
-            isError  = true;
-            isLate   = false;
-            progress = 0f;
-            opacity  = 1f;
+            isError    = true;
+            isWarning  = false;
+            statusText = "NOT FOUND";
+            progress   = 0f;
+            opacity    = 1f;
             runAnimation(onComplete);
         }
 
@@ -873,7 +1078,7 @@ public class MainFrame extends JFrame {
             g2.setComposite(AlphaComposite.getInstance(
                 AlphaComposite.SRC_OVER, opacity));
 
-            Color c = (isError || isLate) ? DANGER : SUCCESS;
+            Color c = (isError || isWarning) ? DANGER : SUCCESS;
 
             // Glow circle
             g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 50));
@@ -935,12 +1140,11 @@ public class MainFrame extends JFrame {
                             (int)(y2+(y3-y2)*s2));
                 }
                 if (progress >= 1f) {
-                    String txt = isLate ? "LATE" : "LOGGED";
                     g2.setFont(new Font("Segoe UI", Font.BOLD, 24));
                     g2.setColor(c);
                     FontMetrics fm = g2.getFontMetrics();
-                    g2.drawString(txt,
-                        cx - fm.stringWidth(txt) / 2,
+                    g2.drawString(statusText,
+                        cx - fm.stringWidth(statusText) / 2,
                         cy + r + 44);
                 }
             }
@@ -952,6 +1156,6 @@ public class MainFrame extends JFrame {
     //  MAIN
     // =========================================================
     public static void main(String[] args) {
-        SplashScreen.launch();   // ← replaces old 3-liner
+        SplashScreen.launch();   // ← congratulations HAHAHAHAH
     }
 }

@@ -7,12 +7,12 @@ import java.awt.geom.RoundRectangle2D;
 
 public class ToastNotification {
 
-    private static final Color MAROON = new Color(138, 26, 19);
-    private static final Color GOLD   = new Color(248, 205, 0);
+    private static final Color MAROON = UIBuilder.MAROON;
+    private static final Color GOLD   = UIBuilder.GOLD;
     private static final Color BG     = new Color(255, 255, 255);
-    private static final Color BORDER = new Color(220, 215, 210);
-    private static final Color TEXT_MAIN = new Color(40, 40, 40);
-    private static final Color TEXT_DIM  = new Color(130, 130, 130);
+    private static final Color BORDER = UIBuilder.BORDER;
+    private static final Color TEXT_MAIN = UIBuilder.TEXT_MAIN;
+    private static final Color TEXT_DIM  = UIBuilder.TEXT_DIM;
 
     public static void show(JFrame owner, String title, String message) {
         SwingUtilities.invokeLater(() -> {

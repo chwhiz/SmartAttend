@@ -10,12 +10,12 @@ import java.sql.SQLException;
 
 public class SplashScreen extends JWindow {
 
-    private static final Color MAROON   = new Color(138, 26, 19);
-    private static final Color GOLD     = new Color(248, 205, 0);
-    private static final Color CARD_BG  = Color.WHITE;
-    private static final Color TEXT_DIM = new Color(130, 130, 130);
-    private static final Color BORDER   = new Color(220, 215, 210);
-    private static final Color DANGER   = new Color(192, 57, 43);
+    private static final Color MAROON   = UIBuilder.MAROON;
+    private static final Color GOLD     = UIBuilder.GOLD;
+    private static final Color CARD_BG  = UIBuilder.CARD_BG;
+    private static final Color TEXT_DIM = UIBuilder.TEXT_DIM;
+    private static final Color BORDER   = UIBuilder.BORDER;
+    private static final Color DANGER   = UIBuilder.DANGER;
 
     private JLabel    lblStep;
     private JLabel    lblSubStep;
@@ -322,7 +322,7 @@ public class SplashScreen extends JWindow {
 
                 setStep("Records loaded.",
                     "Students: "  + DatabaseManager.studentDb.size()
-                    + "  ·  Admins: "    + DatabaseManager.adminDb.size()
+                    + "  ·  Admins: "    + DatabaseManager.getAdminCount()
                     + "  ·  Schedules: " + DatabaseManager.scheduleDb.size(),
                     70);
                 Thread.sleep(500);
@@ -332,7 +332,7 @@ public class SplashScreen extends JWindow {
                     "Building UI components.", 85);
                 Thread.sleep(500);
 
-                setStep("Ready.", "Launching attendance21010621 system.", 100);
+                setStep("Ready.", "Launching attendance system.", 100);
                 Thread.sleep(600);
 
                 // ── Launch ────────────────────────────────────
@@ -356,16 +356,8 @@ public class SplashScreen extends JWindow {
         if (retryShown) return;
         retryShown = true;
 
-        btnRetry = new JButton("Retry");
-        btnRetry.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnRetry.setBackground(MAROON);
-        btnRetry.setForeground(Color.WHITE);
-        btnRetry.setOpaque(true);
-        btnRetry.setBorderPainted(false);
-        btnRetry.setFocusPainted(false);
-        btnRetry.setBorder(new EmptyBorder(8, 20, 8, 20));
+        btnRetry = UIBuilder.createToolbarButton("Retry", MAROON, Color.WHITE);
         btnRetry.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnRetry.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnRetry.addActionListener(e -> {
             if (btnRetry   != null) body.remove(btnRetry);
             if (retryStrut != null) body.remove(retryStrut);
@@ -395,11 +387,24 @@ public class SplashScreen extends JWindow {
     //  LAUNCH
     // =========================================================
     public static void launch() {
-        try { UIManager.setLookAndFeel(
-            UIManager.getSystemLookAndFeelClassName()); }
-        catch (Exception ignored) {}
+        // --- 1. SET UP FLATLAF THEME ---
+        try {
+            // Apply the modern light theme to keep the school colors
+            javax.swing.UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatLightLaf());
+            
+            // Set some global modern UI properties
+            javax.swing.UIManager.put( "Button.arc", 8 );      // Softer UI component corners
+            javax.swing.UIManager.put( "Component.arc", 8 );
+            javax.swing.UIManager.put( "TextComponent.arc", 8 );
+            javax.swing.UIManager.put( "ScrollBar.thumbArc", 999 );
+            javax.swing.UIManager.put( "ScrollBar.thumbInsets", new java.awt.Insets( 2, 2, 2, 2 ) );
 
-        SwingUtilities.invokeLater(() -> {
+        } catch (Exception ex) {
+            System.err.println("Failed to initialize modern interface.");
+        }
+
+        // --- 2. LAUNCH THE SPLASH SCREEN ---
+        javax.swing.SwingUtilities.invokeLater(() -> {
             SplashScreen splash = new SplashScreen(() ->
                 new MainFrame().setVisible(true));
             splash.start();

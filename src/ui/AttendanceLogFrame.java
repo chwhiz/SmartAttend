@@ -10,19 +10,24 @@ import java.sql.*;
 
 public class AttendanceLogFrame extends JFrame {
 
-    private static final Color MAROON    = new Color(138, 26, 19);
-    private static final Color GOLD      = new Color(248, 205, 0);
-    private static final Color BG        = new Color(245, 243, 240);
-    private static final Color CARD_BG   = Color.WHITE;
-    private static final Color TEXT_MAIN = new Color(40, 40, 40);
-    private static final Color TEXT_DIM  = new Color(130, 130, 130);
-    private static final Color BORDER    = new Color(220, 215, 210);
-    private static final Color SUCCESS   = new Color(39, 174, 96);
-    private static final Color DANGER    = new Color(192, 57, 43);
+    private static final Color MAROON    = UIBuilder.MAROON;
+    private static final Color GOLD      = UIBuilder.GOLD;
+    private static final Color BG        = UIBuilder.BG;
+    private static final Color CARD_BG   = UIBuilder.CARD_BG;
+    private static final Color TEXT_MAIN = UIBuilder.TEXT_MAIN;
+    private static final Color TEXT_DIM  = UIBuilder.TEXT_DIM;
+    private static final Color BORDER    = UIBuilder.BORDER;
+    private static final Color SUCCESS   = UIBuilder.SUCCESS;
+    private static final Color DANGER    = UIBuilder.DANGER;
     private static final Color ROW_ALT   = new Color(250, 248, 245);
 
+    private DefaultTableModel model;
+    private JTable table;
+    private JLabel footerLabel;
+    private JComboBox<String> sectionCombo;
+
     public AttendanceLogFrame() {
-        setTitle("Attendance Log — ICT 11-02");
+        setTitle("Attendance Log");
         setSize(960, 560);
         setLocationRelativeTo(null);
         setResizable(true);
@@ -30,7 +35,8 @@ public class AttendanceLogFrame extends JFrame {
         setLayout(new BorderLayout(0, 0));
 
         buildHeader();
-        buildTable();
+        buildContent();
+        loadData("All Sections");
     }
 
     // ── Header ────────────────────────────────────────────────
@@ -39,7 +45,7 @@ public class AttendanceLogFrame extends JFrame {
         header.setBackground(MAROON);
         header.setBorder(new EmptyBorder(14, 20, 14, 20));
 
-        JLabel title = new JLabel("Attendance Log  ·  ICT 11-02");
+        JLabel title = new JLabel("Attendance Log  ·  Senior High School");
         title.setFont(new Font("Segoe UI", Font.BOLD, 16));
         title.setForeground(GOLD);
 
@@ -52,9 +58,8 @@ public class AttendanceLogFrame extends JFrame {
         left.add(title);
         left.add(sub);
 
-        JPanel goldBar = new JPanel();
-        goldBar.setBackground(GOLD);
-        goldBar.setPreferredSize(new Dimension(0, 3));
+        // REFACTORED: Use UIBuilder for standard gold bar
+        JPanel goldBar = UIBuilder.createGoldBar();
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(header,  BorderLayout.CENTER);
@@ -64,41 +69,38 @@ public class AttendanceLogFrame extends JFrame {
         add(wrapper, BorderLayout.NORTH);
     }
 
-    // ── Table ─────────────────────────────────────────────────
-    private void buildTable() {
-        String[] columns = {"#", "Date", "Time", "Student Name", "Section", "Subject", "Status"};
-        DefaultTableModel model = new DefaultTableModel(columns, 0) {
+    // ── Content ─────────────────────────────────────────────────
+    private void buildContent() {
+        JPanel content = new JPanel(new BorderLayout());
+        content.setBorder(new EmptyBorder(16, 20, 0, 20));
+        content.setBackground(BG);
+
+        // Toolbar for Section combo
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        toolbar.setBackground(BG);
+        toolbar.setBorder(new EmptyBorder(0, 0, 10, 0));
+        
+        JLabel lblSection = new JLabel("Filter Section: ");
+        lblSection.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblSection.setForeground(TEXT_MAIN);
+        
+        sectionCombo = new JComboBox<>();
+        sectionCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        sectionCombo.addItem("All Sections");
+        for (String sec : DatabaseManager.sectionList) {
+            sectionCombo.addItem(sec);
+        }
+        sectionCombo.addActionListener(e -> loadData((String) sectionCombo.getSelectedItem()));
+        
+        toolbar.add(lblSection);
+        toolbar.add(sectionCombo);
+
+        String[] columns = {"#", "Name", "ID Number", "Subject", "Time Period", "Status"};
+        model = new DefaultTableModel(columns, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        // Load from MariaDB
-        String sql = "SELECT log_date, log_time, full_name, section, subject, status " +
-                     "FROM attendance_log ORDER BY log_date DESC, log_time DESC";
-
-        try (Connection con = DatabaseManager.getConnection();
-             Statement  st  = con.createStatement();
-             ResultSet  rs  = st.executeQuery(sql)) {
-
-            int row = 1;
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    row++,
-                    rs.getDate  ("log_date").toString(),
-                    rs.getTime  ("log_time").toString().substring(0, 5), // HH:MM
-                    rs.getString("full_name"),
-                    rs.getString("section"),
-                    rs.getString("subject"),
-                    rs.getString("status")
-                });
-            }
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this,
-                "Failed to load attendance log:\n" + e.getMessage(),
-                "Database Error", JOptionPane.ERROR_MESSAGE);
-        }
-
-        JTable table = new JTable(model);
+        table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setForeground(TEXT_MAIN);
         table.setBackground(CARD_BG);
@@ -111,7 +113,7 @@ public class AttendanceLogFrame extends JFrame {
         table.setFocusable(false);
 
         // Column widths
-        int[] widths = {36, 90, 60, 200, 160, 180, 120};
+        int[] widths = {36, 220, 130, 200, 150, 120};
         for (int i = 0; i < widths.length; i++)
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
 
@@ -140,8 +142,8 @@ public class AttendanceLogFrame extends JFrame {
                     setForeground(TEXT_MAIN);
                 }
 
-                // Status column coloring
-                if (col == 6 && val != null) {
+                // Status column coloring (Index 5)
+                if (col == 5 && val != null) {
                     String s = val.toString();
                     if (s.contains("LATE"))    setForeground(DANGER);
                     else if (s.equals("PRESENT")) setForeground(SUCCESS);
@@ -160,24 +162,76 @@ public class AttendanceLogFrame extends JFrame {
         });
 
         // Footer — row count
-        JLabel footer = new JLabel("  " + model.getRowCount() + " records loaded from database");
-        footer.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        footer.setForeground(TEXT_DIM);
-        footer.setBorder(new EmptyBorder(8, 10, 8, 10));
-        footer.setBackground(BG);
-        footer.setOpaque(true);
+        footerLabel = new JLabel("  0 records loaded from database");
+        footerLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        footerLabel.setForeground(TEXT_DIM);
+        footerLabel.setBorder(new EmptyBorder(8, 10, 8, 10));
+        footerLabel.setBackground(BG);
+        footerLabel.setOpaque(true);
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(new EmptyBorder(0, 0, 0, 0));
         scroll.getViewport().setBackground(CARD_BG);
         scroll.setBorder(new MatteBorder(1, 0, 0, 0, BORDER));
 
-        JPanel content = new JPanel(new BorderLayout());
-        content.setBorder(new EmptyBorder(16, 20, 0, 20));
-        content.setBackground(BG);
+        content.add(toolbar, BorderLayout.NORTH);
         content.add(scroll, BorderLayout.CENTER);
 
         add(content, BorderLayout.CENTER);
-        add(footer,  BorderLayout.SOUTH);
+        add(footerLabel,  BorderLayout.SOUTH);
+    }
+    
+    private void loadData(String sectionFilter) {
+        model.setRowCount(0);
+        
+        String sql;
+        if ("All Sections".equals(sectionFilter)) {
+            sql = "SELECT student_id, full_name, subject, log_date, log_time, status " +
+                  "FROM attendance_log ORDER BY log_date DESC, log_time DESC";
+        } else {
+            sql = "SELECT student_id, full_name, subject, log_date, log_time, status " +
+                  "FROM attendance_log WHERE section = ? ORDER BY log_date DESC, log_time DESC";
+        }
+
+        try (Connection con = DatabaseManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+             
+            if (!"All Sections".equals(sectionFilter)) {
+                ps.setString(1, sectionFilter);
+            }
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                int row = 1;
+                while (rs.next()) {
+                    String date = rs.getDate("log_date").toString();
+                    String time = rs.getTime("log_time").toString().substring(0, 5); // HH:MM
+                    
+                    // Format student ID safely, fallback if unformatted
+                    String studentId = rs.getString("student_id");
+                    if (studentId != null && studentId.length() == 9 && !studentId.contains("-")) {
+                        studentId = studentId.substring(0, 2) + "-" + 
+                                    studentId.substring(2, 6) + "-" + 
+                                    studentId.substring(6);
+                    }
+                    
+                    model.addRow(new Object[]{
+                        row++,
+                        rs.getString("full_name"),
+                        studentId,
+                        rs.getString("subject"),
+                        date + "  " + time,
+                        rs.getString("status")
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                "Failed to load attendance log:\n" + e.getMessage(),
+                "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+        
+        if (footerLabel != null) {
+            footerLabel.setText("  " + model.getRowCount() + " records loaded from database");
+        }
     }
 }

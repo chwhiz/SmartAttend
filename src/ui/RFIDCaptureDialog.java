@@ -8,28 +8,28 @@ import logic.DatabaseManager;
 
 public class RFIDCaptureDialog extends JDialog {
 
-    private static final Color MAROON  = new Color(138, 26, 19);
-    private static final Color GOLD    = new Color(248, 205, 0);
-    private static final Color BG      = new Color(245, 243, 240);
-    private static final Color BORDER  = new Color(220, 215, 210);
-    private static final Color TEXT_DIM = new Color(130, 130, 130);
-    private static final Color SUCCESS  = new Color(39, 174, 96);
-    private static final Color DANGER   = new Color(192, 57, 43);
+    private static final Color MAROON   = UIBuilder.MAROON;
+    private static final Color GOLD     = UIBuilder.GOLD;
+    private static final Color BG       = UIBuilder.BG;
+    private static final Color BORDER   = UIBuilder.BORDER;
+    private static final Color TEXT_DIM = UIBuilder.TEXT_DIM;
+    private static final Color SUCCESS  = UIBuilder.SUCCESS;
+    private static final Color DANGER   = UIBuilder.DANGER;
 
     private JTextField hiddenInput;
     private String capturedUid = null;
     private boolean confirmed  = false;
 
-    public RFIDCaptureDialog(Frame parent, String studentName) {
-        super(parent, "Tap RFID — Step 2 of 2", true);
+    public RFIDCaptureDialog(Frame parent, String personName) {
+        super(parent, "Tap Master RFID", true);
         setSize(420, 360);
         setLocationRelativeTo(parent);
         setResizable(false);
         setUndecorated(true);
-        buildUI(studentName);
+        buildUI(personName);
     }
 
-    private void buildUI(String studentName) {
+    private void buildUI(String personName) {
         JPanel root = new JPanel(new BorderLayout());
         root.setBorder(new LineBorder(BORDER, 1));
         root.setBackground(Color.WHITE);
@@ -46,7 +46,7 @@ public class RFIDCaptureDialog extends JDialog {
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblTitle.setForeground(Color.WHITE);
 
-        JLabel lblSub = new JLabel("Registering: " + studentName);
+        JLabel lblSub = new JLabel("Registering: " + personName);
         lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblSub.setForeground(new Color(240, 200, 200));
 
@@ -54,9 +54,8 @@ public class RFIDCaptureDialog extends JDialog {
         titleStack.add(lblSub);
         header.add(titleStack, BorderLayout.CENTER);
 
-        JPanel goldBar = new JPanel();
-        goldBar.setBackground(GOLD);
-        goldBar.setPreferredSize(new Dimension(0, 3));
+        // REFACTORED: Use UIBuilder for standard gold bar
+        JPanel goldBar = UIBuilder.createGoldBar();
 
         JPanel hWrap = new JPanel(new BorderLayout());
         hWrap.add(header,  BorderLayout.CENTER);
@@ -99,7 +98,7 @@ public class RFIDCaptureDialog extends JDialog {
         rfidIcon.setMaximumSize(new Dimension(100, 100));
         rfidIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblInstruct = new JLabel("Please tap the student's RFID card");
+        JLabel lblInstruct = new JLabel("Please tap an RFID card");
         lblInstruct.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblInstruct.setForeground(new Color(40, 40, 40));
         lblInstruct.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -124,13 +123,14 @@ public class RFIDCaptureDialog extends JDialog {
         hiddenInput.setBorder(null);
         hiddenInput.setCaretColor(Color.WHITE); // invisible caret
 
-        hiddenInput.addActionListener(e -> {
+        Runnable processInput = () -> {
             String uid = hiddenInput.getText().trim();
-            hiddenInput.setText("");
             if (uid.isEmpty()) return;
+            hiddenInput.setText("");
 
             // Check if UID already registered
-            if (DatabaseManager.studentDb.containsKey(uid)) {
+            if (DatabaseManager.studentDb.containsKey(uid) || 
+                DatabaseManager.getAdmins().stream().anyMatch(a -> a.id.equals(uid))) {
                 lblStatus.setForeground(DANGER);
                 lblStatus.setText("This card is already registered!");
                 lblWaiting.setText("Please tap a different card.");
@@ -147,6 +147,20 @@ public class RFIDCaptureDialog extends JDialog {
                 confirmed = true;
                 dispose();
             }) {{ setRepeats(false); }}.start();
+        };
+
+        hiddenInput.addActionListener(e -> processInput.run());
+        hiddenInput.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { check(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { check(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { check(); }
+            private void check() {
+                SwingUtilities.invokeLater(() -> {
+                    if (hiddenInput.getText().trim().length() >= 10) {
+                        processInput.run();
+                    }
+                });
+            }
         });
 
         body.add(rfidIcon);
@@ -160,15 +174,8 @@ public class RFIDCaptureDialog extends JDialog {
         footer.setBackground(new Color(245, 243, 240));
         footer.setBorder(new MatteBorder(1, 0, 0, 0, BORDER));
 
-        JButton btnCancel = new JButton("Cancel");
-        btnCancel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnCancel.setBackground(new Color(150, 150, 150));
-        btnCancel.setForeground(Color.WHITE);
-        btnCancel.setOpaque(true);
-        btnCancel.setBorderPainted(false);
-        btnCancel.setFocusPainted(false);
-        btnCancel.setBorder(new EmptyBorder(8, 18, 8, 18));
-        btnCancel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        // REFACTORED: Use UIBuilder for button
+        JButton btnCancel = UIBuilder.createToolbarButton("Cancel", new Color(150, 150, 150), Color.WHITE);
         btnCancel.addActionListener(e -> dispose());
 
         footer.add(btnCancel);

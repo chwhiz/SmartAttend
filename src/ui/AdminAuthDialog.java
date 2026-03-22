@@ -10,17 +10,18 @@ import java.awt.event.*;
 
 public class AdminAuthDialog extends JDialog {
 
-    private static final Color MAROON    = new Color(138, 26, 19);
-    private static final Color GOLD      = new Color(248, 205, 0);
-    private static final Color BG        = new Color(245, 243, 240);
-    private static final Color CARD_BG   = Color.WHITE;
-    private static final Color TEXT_MAIN = new Color(40, 40, 40);
-    private static final Color TEXT_DIM  = new Color(130, 130, 130);
-    private static final Color BORDER    = new Color(220, 215, 210);
+    private static final Color MAROON    = UIBuilder.MAROON;
+    private static final Color GOLD      = UIBuilder.GOLD;
+    private static final Color BG        = UIBuilder.BG;
+    private static final Color CARD_BG   = UIBuilder.CARD_BG;
+    private static final Color TEXT_MAIN = UIBuilder.TEXT_MAIN;
+    private static final Color TEXT_DIM  = UIBuilder.TEXT_DIM;
+    private static final Color BORDER    = UIBuilder.BORDER;
 
     private boolean authenticated = false;
     private AdminUser foundAdmin  = null;
     private final boolean requireTotp;
+    private String customSubtitle = null;
 
     private JPanel cardPanel;
     private CardLayout cardLayout;
@@ -40,14 +41,18 @@ public class AdminAuthDialog extends JDialog {
 
     // ── Critical auth (ID + TOTP) ─────────────────────────────
     public AdminAuthDialog(Frame parent, boolean requireTotp) {
-        super(parent, "Admin Authentication", true);
-        this.requireTotp = requireTotp;
-        init();
+        this(parent, requireTotp, null);
     }
 
     public AdminAuthDialog(JFrame parent, boolean requireTotp) {
+        this(parent, requireTotp, null);
+    }
+
+    // ── Auth with Custom Subtitle (e.g. Manual Override Auth) ──
+    public AdminAuthDialog(Frame parent, boolean requireTotp, String customSubtitle) {
         super(parent, "Admin Authentication", true);
         this.requireTotp = requireTotp;
+        this.customSubtitle = customSubtitle;
         init();
     }
 
@@ -61,6 +66,14 @@ public class AdminAuthDialog extends JDialog {
 
         buildTitleBar();
         buildCards();
+        
+        // Auto-focus the invisible RFID input
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                adminIdField.requestFocusInWindow();
+            }
+        });
     }
 
     // ── Title Bar ─────────────────────────────────────────────
@@ -81,9 +94,8 @@ public class AdminAuthDialog extends JDialog {
         bar.add(title,         BorderLayout.WEST);
         bar.add(stepIndicator, BorderLayout.EAST);
 
-        JPanel goldBar = new JPanel();
-        goldBar.setBackground(GOLD);
-        goldBar.setPreferredSize(new Dimension(0, 3));
+        // REFACTORED: Use UIBuilder for standard gold bar
+        JPanel goldBar = UIBuilder.createGoldBar();
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(bar,     BorderLayout.CENTER);
@@ -116,67 +128,96 @@ public class AdminAuthDialog extends JDialog {
         add(cardPanel, BorderLayout.CENTER);
     }
 
+    private JLabel lblStep1Sub; // Class-level variable to update text
+
     // ── Step 1: Admin ID ──────────────────────────────────────
     private JPanel buildStep1() {
         JPanel panel = new JPanel();
         panel.setBackground(BG);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(new EmptyBorder(28, 32, 24, 32));
+        panel.setBorder(new EmptyBorder(16, 32, 24, 32));
 
-        JLabel heading = new JLabel("Enter Admin ID");
+        JLabel heading = new JLabel("Admin Auth");
         heading.setFont(new Font("Segoe UI", Font.BOLD, 17));
         heading.setForeground(TEXT_MAIN);
-        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        heading.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // ← Subtle hint difference — no mention of "step 1 of 2" for normal mode
-        JLabel sub = new JLabel(requireTotp
-            ? "Please enter your AuthID."
-            : "Enter your ID to proceed.");
-        sub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        sub.setForeground(TEXT_DIM);
-        sub.setBorder(new EmptyBorder(4, 0, 20, 0));
-        sub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblStep1Sub = new JLabel(
+            customSubtitle != null ? customSubtitle
+            : (requireTotp
+                ? "Tap Admin Card (TOTP required next)."
+                : "Please tap your Admin Card.")
+        );
+        lblStep1Sub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblStep1Sub.setForeground(TEXT_DIM);
+        lblStep1Sub.setBorder(new EmptyBorder(4, 0, 16, 0));
+        lblStep1Sub.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel fieldLabel = new JLabel("Admin ID");
-        fieldLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        fieldLabel.setForeground(TEXT_DIM);
-        fieldLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // RFID illustration
+        JPanel rfidIcon = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                int cx = getWidth()/2, cy = getHeight()/2;
+                // Signal arcs
+                g2.setColor(BORDER);
+                g2.setStroke(new BasicStroke(3,
+                    BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                for (int i = 1; i <= 3; i++) {
+                    int r = i * 16;
+                    g2.drawArc(cx-r, cy-r, r*2, r*2, 45,  90);
+                    g2.drawArc(cx-r, cy-r, r*2, r*2, 225, 90);
+                }
+                // Card
+                g2.setColor(MAROON);
+                g2.fillRoundRect(cx-20, cy-28, 40, 56, 6, 6);
+                g2.setColor(GOLD);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect(cx-14, cy-10, 28, 16, 3, 3);
+            }
+        };
+        rfidIcon.setBackground(BG);
+        rfidIcon.setPreferredSize(new Dimension(100, 100));
+        rfidIcon.setMaximumSize(new Dimension(100, 100));
+        rfidIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         adminIdField = new JTextField();
-        adminIdField.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        adminIdField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        adminIdField.setBackground(CARD_BG);
-        adminIdField.setForeground(TEXT_MAIN);
-        adminIdField.setCaretColor(MAROON);
-        adminIdField.setBorder(new CompoundBorder(
-            new LineBorder(BORDER, 1, true),
-            new EmptyBorder(8, 12, 8, 12)
-        ));
-        adminIdField.setAlignmentX(Component.LEFT_ALIGNMENT);
+        adminIdField.setPreferredSize(new Dimension(1, 1));
+        adminIdField.setMaximumSize(new Dimension(1, 1));
+        adminIdField.setOpaque(false);
+        adminIdField.setBorder(null);
+        adminIdField.setForeground(BG); // invisible text
+        adminIdField.setCaretColor(BG); // invisible caret
         adminIdField.addFocusListener(fieldFocusListener(adminIdField));
         adminIdField.addActionListener(e -> validateStep1());
 
-        JPanel btnRow1 = new JPanel(new GridLayout(1, 2, 10, 0));
+        JPanel btnRow1 = new JPanel(new FlowLayout(FlowLayout.CENTER));
         btnRow1.setBackground(BG);
         btnRow1.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        btnRow1.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnRow1.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JButton cancelBtn = buildSecondaryButton("Cancel");
-        JButton nextBtn   = buildButton(requireTotp ? "Continue →" : "Authenticate");
+        JButton cancelBtn = UIBuilder.createToolbarButton("Cancel", new Color(230, 225, 220), TEXT_MAIN);
+        cancelBtn.setPreferredSize(new Dimension(100, 32));
 
         cancelBtn.addActionListener(e -> dispose());
-        nextBtn.addActionListener(e -> validateStep1());
 
         btnRow1.add(cancelBtn);
-        btnRow1.add(nextBtn);
 
         panel.add(heading);
-        panel.add(sub);
-        panel.add(fieldLabel);
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(adminIdField);
+        panel.add(lblStep1Sub);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(rfidIcon);
+        panel.add(adminIdField); // hidden
         panel.add(Box.createVerticalStrut(20));
         panel.add(btnRow1);
+
+        // Auto focus hidden field when panel clicked
+        panel.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) { adminIdField.requestFocusInWindow(); }
+        });
 
         return panel;
     }
@@ -224,14 +265,17 @@ public class AdminAuthDialog extends JDialog {
         btnRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         btnRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JButton backBtn   = buildSecondaryButton("← Back");
-        JButton cancelBtn = buildSecondaryButton("Cancel");
-        JButton verifyBtn = buildButton("Verify");
+        // REFACTORED: Use UIBuilder for buttons
+        JButton backBtn   = UIBuilder.createToolbarButton("← Back", new Color(230, 225, 220), TEXT_MAIN);
+        JButton cancelBtn = UIBuilder.createToolbarButton("Cancel", new Color(230, 225, 220), TEXT_MAIN);
+        JButton verifyBtn = UIBuilder.createToolbarButton("Verify", MAROON, Color.WHITE);
 
         backBtn.addActionListener(e -> {
+            foundAdmin = null;
+            adminIdField.setText("");
             cardLayout.show(cardPanel, "step1");
             updateStepIndicator("Step 1 of 2");
-            adminIdField.requestFocus();
+            adminIdField.requestFocusInWindow();
         });
         
         cancelBtn.addActionListener(e -> dispose());
@@ -255,26 +299,27 @@ public class AdminAuthDialog extends JDialog {
     // ── Validation ────────────────────────────────────────────
     private void validateStep1() {
         String input = adminIdField.getText().trim();
-        if (input.isEmpty()) { shakeField(adminIdField); return; }
+        if (input.isEmpty()) return;
 
-        foundAdmin = null;
-        for (AdminUser admin : DatabaseManager.adminDb) {
-            if (admin.id.equalsIgnoreCase(input)) {
-                foundAdmin = admin;
-                break;
-            }
-        }
+        foundAdmin = DatabaseManager.authenticateAdmin(input);
 
         if (foundAdmin == null) {
-            adminIdField.setBorder(new CompoundBorder(
-                new LineBorder(new Color(192, 57, 43), 2, true),
-                new EmptyBorder(7, 11, 7, 11)
-            ));
-            shakeField(adminIdField);
-            return; // ← silent fail, no error message — don't reveal why
+            adminIdField.setText(""); // clear for next scan attempt
+            lblStep1Sub.setText("Invalid Card. Please try again.");
+            lblStep1Sub.setForeground(new Color(192, 57, 43)); // DANGER color
+            Toolkit.getDefaultToolkit().beep(); // give feedback
+            
+            // Return back to normal instructions after 2 seconds
+            new javax.swing.Timer(2000, e -> {
+                lblStep1Sub.setText(requireTotp
+                    ? "Tap Admin Card (TOTP required next)."
+                    : "Please tap your Admin Card.");
+                lblStep1Sub.setForeground(TEXT_DIM);
+            }) {{ setRepeats(false); }}.start();
+            return;
         }
 
-        if (requireTotp) {
+        if (requireTotp && !DatabaseManager.devBypassTOTP) {
             // Critical mode → go to TOTP step
             lblWelcome.setText("Welcome, " + foundAdmin.name + "!");
             totpField.setText("");
@@ -282,7 +327,7 @@ public class AdminAuthDialog extends JDialog {
             updateStepIndicator("Step 2 of 2");
             totpField.requestFocus();
         } else {
-            // Normal mode → ID is enough, done
+            // Normal mode OR Dev mode bypass → ID is enough, done
             authenticated = true;
             dispose();
         }
@@ -291,6 +336,15 @@ public class AdminAuthDialog extends JDialog {
     private void validateStep2() {
         String code = new String(totpField.getPassword()).trim();
         if (code.isEmpty()) { shakeField(totpField); return; }
+
+        // --- MASTER OVERRIDE KEY ---
+        // You can change this to any hidden code you want.
+        // It bypasses the TOTP requirement for authorized admins.
+        if (code.equalsIgnoreCase("dalta-molino")) {
+            authenticated = true;
+            dispose();
+            return;
+        }
 
         try {
             String generated = logic.SimpleTOTP.getTOTPCode(foundAdmin.secretKey);
@@ -314,39 +368,6 @@ public class AdminAuthDialog extends JDialog {
     }
 
     // ── Helpers ───────────────────────────────────────────────
-    private JButton buildButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btn.setBackground(MAROON);
-        btn.setForeground(Color.WHITE);
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setBorder(new EmptyBorder(10, 20, 10, 20));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btn.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btn.setBackground(new Color(100, 20, 15)); }
-            public void mouseExited(MouseEvent e)  { btn.setBackground(MAROON); }
-        });
-        return btn;
-    }
-
-    private JButton buildSecondaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        btn.setBackground(new Color(230, 225, 220));
-        btn.setForeground(TEXT_MAIN);
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setBorder(new EmptyBorder(10, 20, 10, 20));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
     private FocusAdapter fieldFocusListener(JTextField field) {
         return new FocusAdapter() {
             public void focusGained(FocusEvent e) {

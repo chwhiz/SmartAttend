@@ -1,7 +1,7 @@
 package model;
 
 import java.time.LocalTime;
-
+// simple model para sa schedule item. gagamitin to para i-store yung schedule ng bawat section sa memory (after natin kunin from db) tapos i-loop natin to every attendance scan para malaman kung anong subject at time details ang dapat i-display.
 public class ScheduleItem {
     public final String    section;
     public final String    day;

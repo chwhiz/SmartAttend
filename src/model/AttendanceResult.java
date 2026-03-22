@@ -1,5 +1,6 @@
 package model;
 
+// simple model para sa attendance result. ito yung gagamitin para i-display yung mga details sa attendance log table.
 public class AttendanceResult {
     public String name, displayID, subject, timeDetails, status, section;
 

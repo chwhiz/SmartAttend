@@ -61,26 +61,14 @@ public class StudentManagerFrame extends JFrame {
         textStack.add(title);
         textStack.add(sub);
 
-        JButton btnClose = new JButton("✕");
-        btnClose.setFont(new Font("Segoe UI Emoji", Font.BOLD, 13));
-        btnClose.setForeground(Color.WHITE);
-        btnClose.setBackground(MAROON);
-        btnClose.setBorderPainted(false);
-        btnClose.setFocusPainted(false);
-        btnClose.setOpaque(true);
-        btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnClose.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btnClose.setBackground(DANGER); }
-            public void mouseExited(MouseEvent e)  { btnClose.setBackground(MAROON); }
-        });
-        btnClose.addActionListener(e -> dispose());
+        // REFACTORED: Use UIBuilder for close button directly
+        JButton btnClose = UIBuilder.createCloseButton(this);
 
         bar.add(textStack, BorderLayout.WEST);
         bar.add(btnClose,  BorderLayout.EAST);
 
-        JPanel goldBar = new JPanel();
-        goldBar.setBackground(GOLD);
-        goldBar.setPreferredSize(new Dimension(0, 3));
+        // REFACTORED: Use UIBuilder for gold bar separator
+        JPanel goldBar = UIBuilder.createGoldBar();
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(bar,     BorderLayout.CENTER);
@@ -124,9 +112,10 @@ public class StudentManagerFrame extends JFrame {
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btnRow.setBackground(BG);
 
-        JButton btnAdd    = toolbarButton("Add",    MAROON,                Color.WHITE);
-        JButton btnEdit   = toolbarButton("Edit",   new Color(52, 73, 94), Color.WHITE);
-        JButton btnDelete = toolbarButton("Delete", DANGER,                Color.WHITE);
+        // REFACTORED: Use UIBuilder to replace manual toolbar generation logic
+        JButton btnAdd    = UIBuilder.createToolbarButton("Add",    MAROON,                Color.WHITE);
+        JButton btnEdit   = UIBuilder.createToolbarButton("Edit",   new Color(52, 73, 94), Color.WHITE);
+        JButton btnDelete = UIBuilder.createToolbarButton("Delete", DANGER,                Color.WHITE);
 
         btnAdd.addActionListener(e    -> showAddDialog());
         btnEdit.addActionListener(e   -> showEditDialog());
@@ -375,25 +364,14 @@ public class StudentManagerFrame extends JFrame {
     // =========================================================
     //  HELPERS
     // =========================================================
-    private JButton toolbarButton(String text, Color bg, Color fg) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btn.setBackground(bg);
-        btn.setForeground(fg);
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setBorder(new EmptyBorder(7, 14, 7, 14));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
+    // Empty because we refactored out the toolbarButton method
 
     // =========================================================
     //  INNER DIALOG — Step 1: Student Info
     // =========================================================
     static class StudentInfoDialog extends JDialog {
-        private final JTextField fId, fName, fSection;
+        private final JTextField fId, fName;
+        private final JComboBox<String> cbSection;
         private boolean confirmed = false;
 
         StudentInfoDialog(Frame parent, String title,
@@ -442,25 +420,43 @@ public class StudentManagerFrame extends JFrame {
 
             fId      = field(id);
             fName    = field(name);
-            fSection = field(section);
+            
+            // Populating UI Dropdown exactly mapped to unified DatabaseManager.sectionList
+            java.util.List<String> sortedSections = new ArrayList<>(DatabaseManager.sectionList);
+            java.util.Collections.sort(sortedSections);
+            
+            cbSection = new JComboBox<>(sortedSections.toArray(new String[0]));
+            if (section.isEmpty() && !sortedSections.isEmpty()) {
+                cbSection.setSelectedIndex(0);
+            } else {
+                cbSection.setSelectedItem(section);
+            }
+            cbSection.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            cbSection.setBackground(Color.WHITE);
+            cbSection.setBorder(new CompoundBorder(
+                new LineBorder(new Color(220, 215, 210), 1, true),
+                new EmptyBorder(0, 0, 0, 0)
+            ));
 
             form.add(label("Student ID (xx-xxxx-xxx):")); form.add(fId);
             form.add(label("Full Name:"));                 form.add(fName);
-            form.add(label("Section:"));                   form.add(fSection);
+            form.add(label("Section:"));                   form.add(cbSection);
 
             // Buttons
             JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
             btns.setBackground(new Color(245, 243, 240));
             btns.setBorder(new MatteBorder(1, 0, 0, 0, new Color(220, 215, 210)));
 
-            JButton btnCancel  = btn("Cancel",       new Color(150, 150, 150));
-            JButton btnNext    = btn("Next: Tap Card", new Color(138, 26, 19));
+            // REFACTORED: Use UIBuilder for inner dialog buttons
+            JButton btnCancel  = UIBuilder.createToolbarButton("Cancel",       new Color(150, 150, 150), Color.WHITE);
+            JButton btnNext    = UIBuilder.createToolbarButton("Continue", new Color(138, 26, 19), Color.WHITE);
 
             btnCancel.addActionListener(e -> dispose());
             btnNext.addActionListener(e -> {
+                String secVal = cbSection.getSelectedItem() != null ? cbSection.getSelectedItem().toString().trim() : "";
                 if (fId.getText().trim().isEmpty() ||
                     fName.getText().trim().isEmpty() ||
-                    fSection.getText().trim().isEmpty()) {
+                    secVal.isEmpty()) {
                     JOptionPane.showMessageDialog(this,
                         "All fields are required.", "Validation",
                         JOptionPane.WARNING_MESSAGE);
@@ -496,22 +492,9 @@ public class StudentManagerFrame extends JFrame {
             return l;
         }
 
-        private JButton btn(String text, Color bg) {
-            JButton b = new JButton(text);
-            b.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            b.setBackground(bg);
-            b.setForeground(Color.WHITE);
-            b.setOpaque(true);
-            b.setBorderPainted(false);
-            b.setFocusPainted(false);
-            b.setBorder(new EmptyBorder(8, 18, 8, 18));
-            b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            return b;
-        }
-
         public boolean isConfirmed() { return confirmed; }
         public String getId()        { return fId.getText().trim(); }
         public String getName()      { return fName.getText().trim(); }
-        public String getSection()   { return fSection.getText().trim(); }
+        public String getSection()   { return cbSection.getSelectedItem() != null ? cbSection.getSelectedItem().toString().trim() : ""; }
     }
 }

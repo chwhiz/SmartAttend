@@ -24,27 +24,6 @@ public class ScheduleManagerFrame extends JFrame {
     private static final Color HEADER_FG   = Color.WHITE;
     private static final Color TIME_BG     = new Color(245, 243, 240);
 
-    private static final String[] SECTIONS = {
-        "ABM 11-01","ABM 11-02","ABM 11-03",
-        "AD 11-01","AD 11-02",
-        "HE 11-01","HE 11-02","HE 11-03","HE 11-04",
-        "HUMSS 11-01","HUMSS 11-02","HUMSS 11-03","HUMSS 11-04",
-        "ICT 11-01","ICT 11-02","ICT 11-03",
-        "STEM 11-01","STEM 11-02","STEM 11-03","STEM 11-04","STEM 11-05",
-        "STEM 11-06","STEM 11-07","STEM 11-08","STEM 11-09","STEM 11-10",
-        "STEM 11-11","STEM 11-12","STEM 11-13","STEM 11-14","STEM 11-15",
-        "STEM 11-16","STEM 11-17",
-        "ABM 12-01","ABM 12-02","ABM 12-03",
-        "AD 12-01","AD 12-02",
-        "HE 12-01","HE 12-02","HE 12-03",
-        "HUMSS 12-01","HUMSS 12-02","HUMSS 12-03",
-        "ICT 12-01","ICT 12-02","ICT 12-03",
-        "STEM 12-01","STEM 12-02","STEM 12-03","STEM 12-04","STEM 12-05",
-        "STEM 12-06","STEM 12-07","STEM 12-08","STEM 12-09","STEM 12-10",
-        "STEM 12-11","STEM 12-12","STEM 12-13","STEM 12-14","STEM 12-15",
-        "STEM 12-16","STEM 12-17"
-    };
-
     // Time slots exactly as per the class program
     private static final String[] TIME_SLOTS = {
         "7:00 – 7:30",
@@ -91,6 +70,7 @@ public class ScheduleManagerFrame extends JFrame {
     public ScheduleManagerFrame() {
         setTitle("Schedule Manager — UPHSD SHS");
         setSize(1100, 640);
+        setUndecorated(true);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(0, 0));
         getContentPane().setBackground(BG);
@@ -116,15 +96,18 @@ public class ScheduleManagerFrame extends JFrame {
         sub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         sub.setForeground(new Color(255, 240, 200));
 
-        JPanel left = new JPanel(new GridLayout(2, 1, 0, 2));
-        left.setBackground(MAROON);
-        left.add(title);
-        left.add(sub);
-        header.add(left, BorderLayout.WEST);
+        JPanel textStack = new JPanel(new GridLayout(2, 1, 0, 2));
+        textStack.setBackground(MAROON);
+        textStack.add(title);
+        textStack.add(sub);
+        header.add(textStack, BorderLayout.WEST);
 
-        JPanel goldBar = new JPanel();
-        goldBar.setBackground(GOLD);
-        goldBar.setPreferredSize(new Dimension(0, 3));
+        // REFACTORED: Close Button via UIBuilder
+        JButton btnClose = UIBuilder.createCloseButton(this);
+        header.add(btnClose, BorderLayout.EAST);
+
+        // REFACTORED: Gold Bar via UIBuilder
+        JPanel goldBar = UIBuilder.createGoldBar();
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(header,  BorderLayout.CENTER);
@@ -143,21 +126,31 @@ public class ScheduleManagerFrame extends JFrame {
         lbl.setForeground(TEXT_DIM);
         bar.add(lbl);
 
-        cbSection = new JComboBox<>(SECTIONS);
+        cbSection = new JComboBox<>(DatabaseManager.sectionList.toArray(new String[0]));
         cbSection.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         cbSection.setPreferredSize(new Dimension(160, 32));
-        cbSection.setSelectedItem("ICT 11-02");
+        if (!DatabaseManager.sectionList.isEmpty()) {
+            cbSection.setSelectedItem(DatabaseManager.sectionList.get(0));
+        }
         bar.add(cbSection);
 
-        JButton btnLoad = styledButton("Load Schedule", MAROON, Color.WHITE);
+        JButton btnManage = UIBuilder.createToolbarButton("Manage Sections", new Color(52, 73, 94), Color.WHITE);
+        btnManage.addActionListener(e -> {
+            new SectionManagerDialog(this).setVisible(true);
+            refreshSectionDropdown();
+        });
+        bar.add(btnManage);
+
+        // REFACTORED: Use UIBuilder for toolbar buttons
+        JButton btnLoad = UIBuilder.createToolbarButton("Load Schedule", MAROON, Color.WHITE);
         btnLoad.addActionListener(e -> loadSchedule());
         bar.add(btnLoad);
 
-        JButton btnSave = styledButton("Save All Changes", new Color(39, 174, 96), Color.WHITE);
+        JButton btnSave = UIBuilder.createToolbarButton("Save All Changes", new Color(39, 174, 96), Color.WHITE);
         btnSave.addActionListener(e -> saveAll());
         bar.add(btnSave);
 
-        JButton btnClear = styledButton("Clear Section", new Color(192, 57, 43), Color.WHITE);
+        JButton btnClear = UIBuilder.createToolbarButton("Clear Section", new Color(192, 57, 43), Color.WHITE);
         btnClear.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(this,
                 "Clear ALL schedule entries for " + cbSection.getSelectedItem() + "?",
@@ -176,6 +169,19 @@ public class ScheduleManagerFrame extends JFrame {
         topWrapper.add(bar,   BorderLayout.SOUTH);
         getContentPane().remove(north);
         add(topWrapper, BorderLayout.NORTH);
+    }
+    
+    private void refreshSectionDropdown() {
+        Object current = cbSection.getSelectedItem();
+        cbSection.removeAllItems();
+        for (String sec : DatabaseManager.sectionList) {
+            cbSection.addItem(sec);
+        }
+        if (current != null && DatabaseManager.sectionList.contains(current.toString())) {
+            cbSection.setSelectedItem(current);
+        } else if (cbSection.getItemCount() > 0) {
+            cbSection.setSelectedIndex(0);
+        }
     }
 
     // ── Grid ──────────────────────────────────────────────────
@@ -506,18 +512,5 @@ private int getEndSlotIndex(String endTime) {
         for (int i = 0; i < SLOT_START.length; i++)
             if (SLOT_START[i].equals(startTime)) return i;
         return -1;
-    }
-
-    private JButton styledButton(String text, Color bg, Color fg) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btn.setBackground(bg);
-        btn.setForeground(fg);
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setOpaque(true);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(btn.getPreferredSize().width + 16, 30));
-        return btn;
     }
 }
