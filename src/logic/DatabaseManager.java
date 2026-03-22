@@ -114,20 +114,13 @@ public class DatabaseManager {
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS sections (section_name VARCHAR(100) PRIMARY KEY)");
             }
             
-            // ── Alter attendance_log to add kiosk_id (Ignore if already exists) ──
-            // parang crashout workaround to add missing column lmao
-            try (Statement st = con.createStatement()) {
-                st.executeUpdate("ALTER TABLE attendance_log ADD COLUMN kiosk_id VARCHAR(100) DEFAULT 'Main'");
-            } catch (SQLException e) {
-                // Column likely already exists: MariaDB/MySQL use SQLState 42S21 and error code 1060.
-                String sqlState = e.getSQLState();
-                int errorCode = e.getErrorCode();
-
-                if (!"42S21".equals(sqlState) && errorCode != 1060) {
-                    // Unexpected error: rethrow so it can be logged/handled by the outer catch.
-                    throw e;
+            // ── Alter attendance_log to add kiosk_id (Check first to avoid warning) ──
+            try (ResultSet rsColumns = con.getMetaData().getColumns(null, null, "attendance_log", "kiosk_id")) {
+                if (!rsColumns.next()) {
+                    try (Statement st = con.createStatement()) {
+                        st.executeUpdate("ALTER TABLE attendance_log ADD COLUMN kiosk_id VARCHAR(100) DEFAULT 'Main'");
+                    }
                 }
-                // If we reach here, the column already exists; safe to ignore.
             }
 
             // ── Sections ──
