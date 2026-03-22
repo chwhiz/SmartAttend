@@ -1,10 +1,10 @@
 ﻿<div align="center">
   <h1>SmartAttend</h1>
-  <h3>in University of Perpetual Help System DALTA - Molino Campus</h3>
+  <h3>for University of Perpetual Help System DALTA - Molino Campus</h3>
   <p><b>Final Project in Computer Programming 2 : Java</b><br>
   <i><a href="https://github.com/chwhiz">Gabriel Martin Guillergan</a> | <a href="https://github.com/ICTZen">ICT 11-02</a></i></p>
 
-  <p>A smart, secure, and intuitive student attendance tracking system featuring RFID scanning and TOTP 2FA authentication.</p>
+  <p>A student attendance tracking system built to replace traditional issuance of admission slips featuring RFID scanning and TOTP 2FA authentication (for admins).</p>
 
   <!-- Badges -->
   <img src="https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=java&logoColor=white" />
