@@ -107,7 +107,7 @@ public class MainFrame extends JFrame {
         line2.setForeground(new Color(255, 240, 200));
 
         // version number 
-        JLabel line3 = new JLabel("Attendance System  v4.0");
+        JLabel line3 = new JLabel("SmartAttend v4.0");
         line3.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         line3.setForeground(new Color(220, 180, 180));
 

@@ -1,5 +1,5 @@
 ﻿<div align="center">
-  <h1>📋 SHS Attendance System</h1>
+  <h1>SmartAttend</h1>
   <h3>in University of Perpetual Help System DALTA - Molino Campus</h3>
   <p><b>Final Project in Computer Programming 2 : Java</b><br>
   <i><a href="https://github.com/chwhiz">Gabriel Martin Guillergan</a> | <a href="https://github.com/ICTZen">ICT 11-02</a></i></p>
@@ -24,7 +24,7 @@
 - [Getting Started](#-getting-started)
 
 ## 📖 About the Project
-The **SHS Attendance System** is a Java-based desktop application designed to streamline the way student attendance is recorded and managed. Built with a robust UI and secure backend logic, it minimizes manual entry errors and ensures administrative data remains protected through Time-Based One-Time Passwords (TOTP).
+**SmartAttend** is a Java-based desktop application designed to streamline the way student attendance is recorded and managed. Built with a robust UI and secure backend logic, it minimizes manual entry errors and ensures administrative data remains protected through Time-Based One-Time Passwords (TOTP).
 
 ## ✨ Key Features
 - **💳 RFID Integration:** Quickly scan student IDs for seamless checking in and out.

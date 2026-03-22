@@ -85,7 +85,7 @@ public class SplashScreen extends JWindow {
         line2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         line2.setForeground(new Color(255, 240, 200));
 
-        JLabel line3 = new JLabel("Attendance System  v4.0");
+        JLabel line3 = new JLabel("SmartAttend v4.0");
         line3.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         line3.setForeground(new Color(220, 180, 180));
 
@@ -341,7 +341,7 @@ public class SplashScreen extends JWindow {
                     "Building UI components.", 85);
                 Thread.sleep(500);
 
-                setStep("Ready.", "Launching attendance system.", 100);
+                setStep("Ready.", "Launching SmartAttend!", 100);
                 Thread.sleep(600);
 
                 // ── Launch ────────────────────────────────────
